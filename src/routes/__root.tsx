@@ -77,22 +77,40 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "TrustLayer — Data sharing without trusting anyone" },
+      {
+        name: "description",
+        content:
+          "Privacy-first data sharing with built-in encryption, automated policy enforcement, compliance validation, audit trails, and enterprise-grade access control.",
+      },
+      { name: "author", content: "TrustLayer" },
+      { property: "og:title", content: "TrustLayer — Data sharing without trusting anyone" },
+      {
+        property: "og:description",
+        content:
+          "Securely share sensitive files and datasets with automated privacy enforcement, compliance validation, and instant revocation.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "TrustLayer — Data sharing without trusting anyone" },
+      {
+        name: "twitter:description",
+        content:
+          "Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive data at any moment.",
+      },
+      { name: "theme-color", content: "#111318" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
+
   }),
   shellComponent: RootShell,
   component: RootComponent,
