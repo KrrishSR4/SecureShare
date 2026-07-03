@@ -1,24 +1,208 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import {
+  ArchitectureDiagram,
+  ComplianceMarquee,
+  FeaturesBento,
+  Footer,
+  HeroVisualization,
+  LoadSequence,
+  MagneticButton,
+  Metrics,
+  Nav,
+  PrivacyEngine,
+  ProblemSection,
+  ProductDemo,
+  Reveal,
+  ScrollProgress,
+  Section,
+  Spotlight,
+  Testimonials,
+  WordReveal,
+} from "@/components/trustlayer";
+import { useLenis } from "@/lib/use-lenis";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Landing() {
+  useLenis();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, -80]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.3]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div id="top" className="min-h-screen bg-background text-foreground grain">
+      <LoadSequence />
+      <ScrollProgress />
+      <Spotlight />
+      <Nav />
+
+      {/* ============ HERO ============ */}
+      <section ref={heroRef} className="relative overflow-hidden pt-40 md:pt-48">
+        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-[1400px] px-6 md:px-10">
+          <Reveal>
+            <div className="eyebrow flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+              Privacy Infrastructure · v1.0
+            </div>
+          </Reveal>
+
+          <h1 className="mt-8 max-w-[16ch] font-display text-[13vw] leading-[0.95] tracking-tight md:text-[8.5vw] lg:text-[7.5rem]">
+            <WordReveal text="Data sharing" />
+            <br />
+            <span className="italic text-muted-foreground">
+              <WordReveal text="without trusting" />
+            </span>
+            <br />
+            <WordReveal text="anyone." />
+          </h1>
+
+          <div className="mt-10 grid gap-10 md:grid-cols-[1.2fr_1fr] md:items-end">
+            <Reveal delay={0.3}>
+              <p className="max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
+                Securely share sensitive information with built-in encryption, automated privacy enforcement,
+                compliance validation, audit trails, and enterprise-grade access control.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <MagneticButton variant="primary">
+                  Request access <ArrowRight className="h-4 w-4" />
+                </MagneticButton>
+                <MagneticButton variant="ghost">
+                  See how it works
+                </MagneticButton>
+              </div>
+              <div className="mt-10 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5" /> SOC 2 Type II
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5" /> ISO 27001
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5" /> HIPAA
+                </div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5" /> GDPR
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.4} y={40}>
+              <HeroVisualization />
+            </Reveal>
+          </div>
+        </motion.div>
+
+        <div className="mt-24">
+          <ComplianceMarquee />
+        </div>
+      </section>
+
+      {/* ============ PROBLEM ============ */}
+      <Section
+        id="problem"
+        eyebrow="The problem"
+        title={<>Once a file leaves your <span className="italic text-muted-foreground">walls</span>, it's gone.</>}
+        intro="Traditional sharing depends on trust. Trust the recipient. Trust their inbox. Trust their laptop. TrustLayer replaces trust with cryptographic control."
+      >
+        <ProblemSection />
+      </Section>
+
+      {/* ============ PRODUCT DEMO ============ */}
+      <Section
+        id="product"
+        eyebrow="The product"
+        title={<>Share sensitive data <span className="italic text-muted-foreground">in six moves</span>.</>}
+        intro="Upload. Choose recipients. Apply a policy. Share. Monitor every access. Revoke at any time."
+      >
+        <Reveal delay={0.1} y={40}>
+          <ProductDemo />
+        </Reveal>
+      </Section>
+
+      {/* ============ PRIVACY ENGINE ============ */}
+      <Section
+        id="privacy"
+        eyebrow="Privacy Engine"
+        title={<>Enforcement at every <span className="italic text-muted-foreground">stage</span>.</>}
+        intro="Privacy isn't a checkbox at the end. It's compiled into the payload before it leaves the browser."
+      >
+        <PrivacyEngine />
+      </Section>
+
+      {/* ============ FEATURES ============ */}
+      <Section
+        id="features"
+        eyebrow="Capabilities"
+        title={<>Built for the teams that <span className="italic text-muted-foreground">cannot</span> afford a leak.</>}
+        intro="Ten capabilities. One control plane. Every action provable."
+      >
+        <FeaturesBento />
+      </Section>
+
+      {/* ============ METRICS ============ */}
+      <Section
+        eyebrow="By the numbers"
+        title={<>Trusted with the data that <span className="italic text-muted-foreground">matters most</span>.</>}
+      >
+        <Metrics />
+      </Section>
+
+      {/* ============ ARCHITECTURE ============ */}
+      <Section
+        id="security"
+        eyebrow="Security architecture"
+        title={<>Six layers. <span className="italic text-muted-foreground">One</span> guarantee.</>}
+        intro="Defense in depth from the identity that requests access to the audit log that records it."
+      >
+        <ArchitectureDiagram />
+      </Section>
+
+      {/* ============ TESTIMONIALS ============ */}
+      <Section
+        id="customers"
+        eyebrow="Field notes"
+        title={<>From security teams who <span className="italic text-muted-foreground">stopped worrying</span>.</>}
+      >
+        <Testimonials />
+      </Section>
+
+      {/* ============ FINAL CTA ============ */}
+      <section className="relative overflow-hidden border-t border-border">
+        <div className="mx-auto max-w-[1400px] px-6 py-40 md:px-10 md:py-56">
+          <Reveal>
+            <div className="eyebrow flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+              Get started
+            </div>
+          </Reveal>
+          <h2 className="mt-8 font-display text-[14vw] leading-[0.95] tracking-tight md:text-[10vw] lg:text-[9rem]">
+            <WordReveal text="Privacy shouldn't" />
+            <br />
+            <span className="italic text-muted-foreground">
+              <WordReveal text="be optional." />
+            </span>
+          </h2>
+          <Reveal delay={0.2}>
+            <p className="mt-10 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
+              Protect sensitive data with automated privacy infrastructure designed for modern organizations.
+            </p>
+            <div className="mt-10 flex flex-wrap items-center gap-3">
+              <MagneticButton variant="primary">
+                Request access <ArrowRight className="h-4 w-4" />
+              </MagneticButton>
+              <MagneticButton variant="ghost">Talk to security</MagneticButton>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 }
