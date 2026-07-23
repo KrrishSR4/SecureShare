@@ -1054,9 +1054,9 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("relative mx-auto max-w-[1400px] px-6 py-28 md:px-10 md:py-40", className)}>
+    <section id={id} className={cn("relative mx-auto max-w-[1400px] px-6 py-14 md:px-10 md:py-24", className)}>
       {(eyebrow || title || intro) && (
-        <div className="mb-16 max-w-3xl">
+        <div className="mb-10 max-w-3xl">
           {eyebrow && (
             <Reveal>
               <div className="eyebrow flex items-center gap-2">

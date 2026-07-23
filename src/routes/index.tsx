@@ -88,7 +88,7 @@ function Landing() {
       <Nav />
 
       {/* ============ HERO ============ */}
-      <section ref={heroRef} className="relative overflow-hidden pt-40 md:pt-48">
+      <section ref={heroRef} className="relative overflow-hidden pt-28 md:pt-32">
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-[1400px] px-6 md:px-10">
           <Reveal>
             <div className="eyebrow flex items-center gap-2">
@@ -143,7 +143,7 @@ function Landing() {
           </div>
         </motion.div>
 
-        <div className="mt-24">
+        <div className="mt-12">
           <ComplianceMarquee />
         </div>
       </section>
@@ -219,7 +219,7 @@ function Landing() {
 
       {/* ============ FINAL CTA ============ */}
       <section className="relative overflow-hidden border-t border-border">
-        <div className="mx-auto max-w-[1400px] px-6 py-40 md:px-10 md:py-56">
+        <div className="mx-auto max-w-[1400px] px-6 py-20 md:px-10 md:py-32">
           <Reveal>
             <div className="eyebrow flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-signal" />
