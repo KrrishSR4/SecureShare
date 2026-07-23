@@ -127,7 +127,7 @@ function Landing() {
       <Nav />
 
       {/* ============ HERO ============ */}
-      <section ref={heroRef} className="relative overflow-hidden pt-32 md:pt-40 pb-16">
+      <section ref={heroRef} className="relative overflow-hidden pt-20 md:pt-24 pb-12">
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-[1400px] px-6 md:px-10">
           <div className="grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center">
             {/* Left Column (Text & CTAs) */}
