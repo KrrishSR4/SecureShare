@@ -346,24 +346,58 @@ export function HeroVisualization() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 3D Mouse Tilt Logic
+    // 3D tilt and mouse proximity logic
     const container = containerRef.current;
     const card = cardRef.current;
     if (!container || !card) return;
 
     const onMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
+      const rect = card.getBoundingClientRect();
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
-      const rotateX = -(y / rect.height) * 8; // subtle rotation
-      const rotateY = (x / rect.width) * 8;
+      const rotateX = -(y / rect.height) * 10; // restored strong tilt (up to 10 deg)
+      const rotateY = (x / rect.width) * 10;
 
       gsap.to(card, {
         rotateX,
         rotateY,
         transformPerspective: 1000,
         ease: "power2.out",
-        duration: 0.5,
+        duration: 0.4,
+      });
+
+      // Mouse Proximity scaling for interactive nodes
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const nodes = card.querySelectorAll(".interactive-node");
+      nodes.forEach((nodeEl: any) => {
+        const nRect = nodeEl.getBoundingClientRect();
+        const nX = nRect.left - rect.left + nRect.width / 2;
+        const nY = nRect.top - rect.top + nRect.height / 2;
+
+        const dx = mouseX - nX;
+        const dy = mouseY - nY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 110) {
+          const scale = 1 + (1 - distance / 110) * 0.05; // scale up to 1.05x
+          gsap.to(nodeEl, {
+            scale,
+            borderColor: "var(--border-strong)",
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.05)",
+            duration: 0.35,
+            ease: "power2.out"
+          });
+        } else {
+          gsap.to(nodeEl, {
+            scale: 1,
+            borderColor: "var(--color-border)",
+            boxShadow: "none",
+            duration: 0.45,
+            ease: "power2.out"
+          });
+        }
       });
     };
 
@@ -374,126 +408,194 @@ export function HeroVisualization() {
         ease: "power2.out",
         duration: 0.8,
       });
+
+      const nodes = card.querySelectorAll(".interactive-node");
+      nodes.forEach((nodeEl: any) => {
+        gsap.to(nodeEl, {
+          scale: 1,
+          borderColor: "var(--color-border)",
+          boxShadow: "none",
+          duration: 0.45,
+          ease: "power2.out"
+        });
+      });
     };
 
     container.addEventListener("mousemove", onMouseMove);
     container.addEventListener("mouseleave", onMouseLeave);
 
-    // Sequential Workflow Timeline
+    // GSAP sequential storytelling timeline (Plays ONCE on refresh/mount)
     const ctx = gsap.context(() => {
-      // 1. Initial State Setting
-      gsap.set([".file-node", ".core-node", ".policy-badge", ".recipient-node", ".link-node", ".audit-log-line", ".laser-left-path", ".laser-right-path"], {
-        opacity: 0,
-        y: 10,
-        scale: 0.98,
-      });
-      gsap.set(".core-shield", { scale: 0.85, opacity: 0.4 });
-      gsap.set(".binary-matrix", { opacity: 0 });
-      gsap.set([".laser-left-pulse", ".laser-right-pulse"], { strokeDashoffset: 180 });
+      const tl = gsap.timeline();
 
-      const mainTl = gsap.timeline({ repeat: -1, repeatDelay: 3.5 });
+      // Helper function to restore initial state at the start
+      const resetState = () => {
+        gsap.set([
+          ".node-file", ".node-engine", ".policy-tags", ".node-recipient",
+          ".node-link", ".audit-timeline", ".flow-path-left", ".flow-path-right"
+        ], { opacity: 0, y: 12, scale: 0.98 });
+        gsap.set(".engine-lock", { rotate: -45, opacity: 0.3 });
+        gsap.set(".encrypted-blocks", { opacity: 0, scale: 0.9 });
+        gsap.set([".packet-pulse-left", ".packet-pulse-right"], { strokeDashoffset: 180 });
+        gsap.set(".revoke-action", { opacity: 0, y: 5, scale: 0.95 });
+        gsap.set(".recipient-status", { textContent: "Verification Pending", className: "text-muted-foreground text-[9px] flex items-center gap-1" });
+        gsap.set(".recipient-dot", { backgroundColor: "#d1d5db" });
+        gsap.set(".link-text", { textContent: "secureshare.io/r/atlas", className: "text-xs font-semibold text-ink flex items-center gap-1" });
+        gsap.set(".log-message", { textContent: "system: standing by for secure upload request...", className: "text-muted-foreground/60 flex-1 truncate" });
+        gsap.set([".flow-path-right", ".packet-pulse-right"], { stroke: "currentColor", strokeOpacity: 0.25 });
+      };
 
-      mainTl
-        // Step 1: File appears on the left
-        .to(".file-node", {
+      resetState();
+
+      tl
+        // 1. Upload File
+        .to(".node-file", {
           opacity: 1,
           y: 0,
           scale: 1,
-          duration: 0.6,
-          ease: "power3.out"
-        })
-
-        // Step 2: Connection line and core node appear in the center
-        .to([".core-node", ".laser-left-path"], {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
-          ease: "power3.out"
-        }, "-=0.2")
-
-        // Step 3: File packet (laser) travels from left to central encryption node
-        .to(".laser-left-pulse", {
-          strokeDashoffset: 0,
-          duration: 0.8,
-          ease: "power2.inOut"
-        }, "-=0.3")
-
-        // Step 4: Shield pulses once encryption starts
-        .to(".core-shield", {
-          scale: 1.15,
-          opacity: 1,
-          stroke: "oklch(0.62 0.16 148)", // subtle green
           duration: 0.35,
           ease: "power2.out"
         })
-        .to(".core-shield", {
+        .to(".audit-timeline", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.25
+        }, "-=0.15")
+        .to(".log-message", {
+          textContent: "audit: client initiated upload file - diligence_report.pdf (2.4MB)",
+          className: "text-ink flex-1 truncate font-medium",
+          duration: 0.15
+        })
+
+        // 2. Encryption Engine & Path appear
+        .to([".node-engine", ".flow-path-left"], {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.35,
+          ease: "power2.out"
+        }, "-=0.1")
+
+        // 3. File smoothly moves (laser pulse) to Encryption Hub
+        .to(".packet-pulse-left", {
+          strokeDashoffset: 0,
+          duration: 0.55,
+          ease: "power2.inOut"
+        })
+
+        // 4. Lock snaps closed & displays encrypted binary blocks
+        .to(".engine-lock", {
+          rotate: 0,
+          opacity: 1,
+          stroke: "oklch(0.62 0.16 148)", // subtle green highlight
+          duration: 0.25,
+          ease: "back.out(2)"
+        })
+        .to(".encrypted-blocks", {
+          opacity: 0.9,
           scale: 1,
           duration: 0.25,
-          ease: "power2.in"
-        })
-
-        // Step 5: File transforms into encrypted blocks (binary overlay fades in and flickers)
-        .to(".binary-matrix", {
-          opacity: 0.8,
-          duration: 0.35,
-          ease: "none"
-        }, "-=0.5")
-
-        // Step 6: Privacy Policy Enforced badge is automatically applied
-        .to(".policy-badge", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.5,
-          ease: "back.out(1.5)"
-        }, "-=0.1")
-
-        // Step 7: Encrypted packet travels along the connection lines to the right
-        .to(".laser-right-path", {
-          opacity: 1,
-          duration: 0.3
-        }, "-=0.1")
-        .to(".laser-right-pulse", {
-          strokeDashoffset: 0,
-          duration: 0.8,
-          ease: "power2.inOut"
-        }, "-=0.2")
-
-        // Step 8: Recipient verification badge appears
-        .to(".recipient-node", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.5,
-          ease: "power3.out"
-        }, "-=0.4")
-
-        // Step 9: Secure share link generated (success state green check)
-        .to(".link-node", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.5,
-          ease: "power3.out"
-        }, "-=0.2")
-
-        // Step 10: Audit log console records the transaction
-        .to(".audit-log-line", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
           ease: "power2.out"
         }, "-=0.1")
+        .to(".log-message", {
+          textContent: "audit: client-side AES-256 key applied. file encrypted locally.",
+          className: "text-ink flex-1 truncate font-medium",
+          duration: 0.15
+        })
 
-        // Step 11: Final State breathing animation (subtle scaling of elements to feel alive)
-        .to([".file-node", ".link-node", ".core-node"], {
-          scale: 1.012,
-          duration: 1.5,
+        // 5. Privacy Policy Engine (GDPR, HIPAA tags applied)
+        .to(".policy-tags", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.3,
+          stagger: 0.08,
+          ease: "back.out(1.4)"
+        }, "-=0.05")
+
+        // 6. Curved paths to recipient appear and encrypted packet travels right
+        .to([".node-recipient", ".flow-path-right"], {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.35,
+          ease: "power2.out"
+        }, "-=0.1")
+        .to(".packet-pulse-right", {
+          strokeDashoffset: 0,
+          duration: 0.55,
+          ease: "power2.inOut"
+        })
+
+        // 7. Secure Share Link is generated
+        .to(".node-link", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.3,
+          ease: "power2.out"
+        }, "-=0.1")
+        .to(".log-message", {
+          textContent: "audit: secure link generated securely. policy checks active.",
+          className: "text-ink flex-1 truncate font-medium",
+          duration: 0.15
+        })
+
+        // 8. Recipient Identity gets verified
+        .to(".recipient-status", {
+          textContent: "Identity Verified",
+          className: "text-signal font-semibold text-[9px] flex items-center gap-1",
+          duration: 0.15
+        })
+        .to(".recipient-dot", {
+          backgroundColor: "#10b981",
+          duration: 0.15
+        }, "-=0.15")
+
+        // 9. Instant Revoke option appears
+        .to(".revoke-action", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.35,
+          delay: 0.8,
+          ease: "power2.out"
+        })
+
+        // 10. Click simulated on Revoke Access button
+        .to(".revoke-button", {
+          scale: 0.95,
+          borderColor: "rgba(239, 68, 68, 0.4)",
+          duration: 0.1,
           yoyo: true,
-          repeat: 1,
-          ease: "sine.inOut"
+          repeat: 1
+        })
+
+        // 11. Revocation Actions take place immediately
+        .to([".flow-path-right", ".packet-pulse-right"], {
+          stroke: "#cbd5e1",
+          strokeOpacity: 0.3,
+          duration: 0.2
+        })
+        .to(".recipient-status", {
+          textContent: "Access Denied",
+          className: "text-red-500 font-semibold text-[9px] flex items-center gap-1",
+          duration: 0.2
+        })
+        .to(".recipient-dot", {
+          backgroundColor: "#ef4444",
+          duration: 0.2
+        }, "-=0.2")
+        .to(".link-text", {
+          textContent: "access_revoked",
+          className: "text-muted-foreground/50 line-through text-xs font-semibold flex items-center gap-1",
+          duration: 0.2
+        }, "-=0.2")
+        .to(".log-message", {
+          textContent: "audit_daemon: WARNING - sender triggered INSTANT_REVOCATION. keys cleared, recipient access revoked.",
+          className: "text-red-500 font-semibold flex-1 truncate",
+          duration: 0.2
         });
 
     }, card);
@@ -509,37 +611,37 @@ export function HeroVisualization() {
     <div ref={containerRef} className="relative w-full py-4 flex items-center justify-center [perspective:1000px] z-10">
       <div
         ref={cardRef}
-        className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-[0_15px_45px_rgba(0,0,0,0.12)] [transform-style:preserve-3d]"
+        className="relative h-[400px] w-full max-w-[600px] overflow-hidden rounded-2xl border border-border bg-surface-elevated/70 backdrop-blur-sm shadow-[0_12px_36px_rgba(0,0,0,0.03)] [transform-style:preserve-3d]"
       >
         {/* Subtle grid background */}
-        <svg className="absolute inset-0 h-full w-full text-border/20 pointer-events-none" aria-hidden="true">
+        <svg className="absolute inset-0 h-full w-full text-border/40 pointer-events-none" aria-hidden="true">
           <defs>
-            <pattern id="clean-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+            <pattern id="light-grid" width="30" height="30" patternUnits="userSpaceOnUse">
               <path d="M30 0H0V30" fill="none" stroke="currentColor" strokeWidth="0.5" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#clean-grid)" />
+          <rect width="100%" height="100%" fill="url(#light-grid)" />
         </svg>
 
-        {/* Connection Paths (SVG) */}
+        {/* Thin elegant connection lines (SVG) */}
         <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 600 400" preserveAspectRatio="none">
-          {/* Base inactive connection lines */}
+          {/* Base lines */}
           <path
-            d="M 170 160 C 220 160, 240 200, 300 200"
+            d="M 220 157 C 235 157, 240 200, 252 200"
             fill="none"
             stroke="currentColor"
             strokeOpacity={0.08}
             strokeWidth="1.2"
           />
           <path
-            d="M 300 200 C 350 200, 370 120, 430 120"
+            d="M 348 200 C 360 200, 365 101, 380 101"
             fill="none"
             stroke="currentColor"
             strokeOpacity={0.08}
             strokeWidth="1.2"
           />
           <path
-            d="M 300 200 C 350 200, 370 240, 430 240"
+            d="M 348 200 C 360 200, 365 207, 380 207"
             fill="none"
             stroke="currentColor"
             strokeOpacity={0.08}
@@ -548,27 +650,27 @@ export function HeroVisualization() {
 
           {/* Left connection path (dynamic reveal line) */}
           <path
-            className="laser-left-path"
-            d="M 170 160 C 220 160, 240 200, 300 200"
+            className="flow-path-left"
+            d="M 220 157 C 235 157, 240 200, 252 200"
             fill="none"
             stroke="currentColor"
-            strokeOpacity={0.25}
+            strokeOpacity={0.2}
             strokeWidth="1.2"
           />
           {/* Right connection path (dynamic reveal line) */}
           <path
-            className="laser-right-path"
-            d="M 300 200 C 350 200, 370 240, 430 240"
+            className="flow-path-right"
+            d="M 348 200 C 360 200, 365 207, 380 207"
             fill="none"
             stroke="currentColor"
-            strokeOpacity={0.25}
+            strokeOpacity={0.2}
             strokeWidth="1.2"
           />
 
           {/* Glowing laser pulse segments */}
           <path
-            className="laser-left-pulse text-signal"
-            d="M 170 160 C 220 160, 240 200, 300 200"
+            className="packet-pulse-left text-signal"
+            d="M 220 157 C 235 157, 240 200, 252 200"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.6"
@@ -576,8 +678,8 @@ export function HeroVisualization() {
             strokeLinecap="round"
           />
           <path
-            className="laser-right-pulse text-signal"
-            d="M 300 200 C 350 200, 370 240, 430 240"
+            className="packet-pulse-right text-signal"
+            d="M 348 200 C 360 200, 365 207, 380 207"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.6"
@@ -587,35 +689,35 @@ export function HeroVisualization() {
         </svg>
 
         {/* Source File (Left Side) */}
-        <div className="file-node absolute left-[6%] top-[120px] [transform:translateZ(10px)] select-none">
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+        <div className="node-file interactive-node absolute left-[30px] top-[125px] w-[190px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] transition-colors duration-300">
             <div className="p-2 rounded-lg bg-mist text-muted-foreground">
               <FileText className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <div className="text-left font-sans">
-              <div className="text-xs font-semibold text-ink">diligence_report.pdf</div>
-              <div className="text-[10px] text-muted-foreground">2.4 MB · PDF Document</div>
+            <div className="text-left font-sans truncate">
+              <div className="text-xs font-semibold text-ink truncate">diligence_report.pdf</div>
+              <div className="text-[10px] text-muted-foreground truncate">2.4 MB · Source</div>
             </div>
           </div>
         </div>
 
-        {/* Encryption Hub (Center) */}
-        <div className="core-node absolute left-1/2 top-[200px] -translate-x-1/2 -translate-y-1/2 [transform:translateZ(15px)] pointer-events-none">
-          <div className="relative grid h-24 w-24 place-items-center rounded-full border border-border bg-background shadow-sm">
-            {/* Ambient revolving dashed border */}
+        {/* Client-Side Encryption Engine (Center) */}
+        <div className="node-engine interactive-node absolute left-[252px] top-[152px] w-24 h-24 [transform:translateZ(15px)] pointer-events-none">
+          <div className="relative w-full h-full grid place-items-center rounded-full border border-border bg-background shadow-sm">
+            {/* Spinning dashed border */}
             <div
-              className="absolute inset-0 rounded-full border border-dashed border-border-strong animate-spin [animation-duration:40s]"
+              className="absolute inset-0 rounded-full border border-dashed border-[#e2e8f0] animate-spin [animation-duration:45s]"
               style={{ margin: "-3px" }}
             />
-            <div className="flex flex-col items-center gap-1 z-10">
-              <ShieldCheck className="core-shield h-8 w-8 text-muted-foreground transition-all duration-300" strokeWidth={1.5} />
+            <div className="flex flex-col items-center gap-0.5 z-10">
+              <ShieldCheck className="engine-lock h-8 w-8 text-muted-foreground transition-all duration-300" strokeWidth={1.5} />
               <span className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">
-                Vault
+                Encrypt
               </span>
             </div>
 
-            {/* Binary scramble overlay inside node */}
-            <div className="binary-matrix absolute inset-2 rounded-full overflow-hidden flex flex-wrap content-center justify-center gap-1 font-mono text-[7px] text-signal/45 leading-none select-none pointer-events-none">
+            {/* Encrypted Blocks grid overlay */}
+            <div className="encrypted-blocks absolute inset-2 rounded-full overflow-hidden flex flex-wrap content-center justify-center gap-1 font-mono text-[7px] text-signal/55 leading-none select-none pointer-events-none">
               <span>0</span><span>1</span><span>0</span>
               <span>1</span><span>0</span><span>1</span>
               <span>0</span><span>1</span><span>0</span>
@@ -623,49 +725,62 @@ export function HeroVisualization() {
           </div>
         </div>
 
-        {/* Applied Policy Badge (Center-Bottom) */}
-        <div className="policy-badge absolute left-1/2 top-[275px] -translate-x-1/2 [transform:translateZ(10px)] select-none">
-          <div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[10px] font-medium text-muted-foreground shadow-sm">
-            <ShieldCheck className="h-3.5 w-3.5 text-signal" strokeWidth={1.8} />
-            <span>Policy: GDPR & SOC2 Enforced</span>
+        {/* Privacy Policy Badges (Applied GDPR, HIPAA) */}
+        <div className="policy-tags absolute left-1/2 top-[275px] -translate-x-1/2 [transform:translateZ(10px)] select-none flex gap-1.5">
+          <div className="flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-0.5 text-[9px] font-mono text-muted-foreground shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal" /> GDPR
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-0.5 text-[9px] font-mono text-muted-foreground shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-signal" /> HIPAA
           </div>
         </div>
 
         {/* Recipient Verification (Right Side - Top) */}
-        <div className="recipient-node absolute right-[6%] top-[75px] [transform:translateZ(10px)] select-none">
-          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2 shadow-sm">
+        <div className="node-recipient interactive-node absolute right-[30px] top-[75px] w-[190px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] transition-colors duration-300">
             <Users className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <div className="text-left font-sans">
-              <div className="text-[10px] font-semibold text-ink">Identity verified</div>
-              <div className="text-[9px] text-signal flex items-center gap-1">
-                <span className="h-1 w-1 rounded-full bg-signal animate-pulse" /> alice@compliance.com
+            <div className="text-left font-sans truncate">
+              <div className="text-[10px] font-semibold text-ink truncate">Identity Verified</div>
+              <div className="recipient-status text-[9px] text-muted-foreground flex items-center gap-1 truncate">
+                <span className="recipient-dot h-1.5 w-1.5 rounded-full bg-border transition-colors duration-300" /> alice@compliance.com
               </div>
             </div>
           </div>
         </div>
 
         {/* Generated Share Link (Right Side - Bottom) */}
-        <div className="link-node absolute right-[6%] top-[180px] [transform:translateZ(10px)] select-none">
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+        <div className="node-link interactive-node absolute right-[30px] top-[175px] w-[190px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)] transition-colors duration-300">
             <div className="p-2 rounded-lg bg-signal/5 text-signal">
               <Lock className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <div className="text-left font-sans">
-              <div className="text-xs font-semibold text-ink flex items-center gap-1">
+            <div className="text-left font-sans truncate">
+              <div className="link-text text-xs font-semibold text-ink flex items-center gap-1 truncate">
                 secureshare.io/r/atlas
               </div>
-              <div className="text-[9px] text-muted-foreground">Signed & Encrypted Link</div>
+              <div className="text-[9px] text-muted-foreground truncate">Encrypted Access Link</div>
             </div>
           </div>
         </div>
 
+        {/* Revoke Action Simulator */}
+        <div className="revoke-action interactive-node absolute right-[30px] top-[265px] w-[190px] [transform:translateZ(10px)] select-none">
+          <div className="revoke-button flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2.5 cursor-pointer shadow-sm transition-colors duration-300 hover:bg-red-500/10">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="font-mono text-[9px] font-bold text-red-600 uppercase tracking-widest">
+              Revoke Access
+            </span>
+          </div>
+        </div>
+
         {/* Audit Log Console (Bottom) */}
-        <div className="audit-log-line absolute inset-x-6 bottom-4 [transform:translateZ(10px)]">
-          <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-mist/20 px-3.5 py-2.5 font-mono text-[9px] text-muted-foreground text-left shadow-inner">
-            <Terminal className="h-3.5 w-3.5 text-muted-foreground/60" />
-            <span className="text-muted-foreground/40">audit_daemon:</span>
-            <span className="text-signal font-semibold">success</span>
-            <span>- file_id: 8a7c92ae | policy_hash: 2c0a | access: verified</span>
+        <div className="audit-timeline absolute left-[30px] right-[30px] bottom-[20px] [transform:translateZ(10px)]">
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-mist/35 px-3.5 py-2.5 font-mono text-[9px] text-ink text-left shadow-inner transition-colors duration-300">
+            <Terminal className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground/60">audit_daemon:</span>
+            <span className="log-message text-muted-foreground flex-1 truncate transition-all duration-300">
+              system: standing by for secure upload request...
+            </span>
           </div>
         </div>
       </div>
