@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
+import { gsap } from "@/lib/gsap";
 import {
   ArchitectureDiagram,
   ComplianceMarquee,
@@ -21,7 +22,7 @@ import {
   Spotlight,
   Testimonials,
   WordReveal,
-} from "@/components/trustlayer";
+} from "@/components/secureshare";
 import { useLenis } from "@/lib/use-lenis";
 
 export const Route = createFileRoute("/")({
@@ -35,8 +36,52 @@ function Landing() {
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.3]);
 
+  useEffect(() => {
+    // Parallax background blobs using GSAP
+    gsap.to(".blob-parallax", {
+      y: 250,
+      x: 100,
+      ease: "none",
+      scrollTrigger: {
+        trigger: "#top",
+        start: "top top",
+        end: "bottom top",
+        scrub: 1.5,
+      },
+    });
+
+    gsap.to(".blob-parallax-2", {
+      y: -350,
+      x: -150,
+      ease: "none",
+      scrollTrigger: {
+        trigger: "#top",
+        start: "top top",
+        end: "bottom top",
+        scrub: 2,
+      },
+    });
+
+    gsap.to(".blob-parallax-3", {
+      y: -200,
+      x: 80,
+      ease: "none",
+      scrollTrigger: {
+        trigger: "#top",
+        start: "top top",
+        end: "bottom top",
+        scrub: 1.2,
+      },
+    });
+  }, []);
+
   return (
-    <div id="top" className="min-h-screen bg-background text-foreground grain">
+    <div id="top" className="relative min-h-screen bg-background text-foreground grain overflow-hidden">
+      {/* Background Parallax Blobs */}
+      <div className="blob-parallax absolute top-[-5%] left-[-5%] w-[500px] h-[500px] rounded-full bg-signal/10 blur-[120px] pointer-events-none z-0" />
+      <div className="blob-parallax-2 absolute top-[25%] right-[-10%] w-[650px] h-[650px] rounded-full bg-accent/15 blur-[150px] pointer-events-none z-0" />
+      <div className="blob-parallax-3 absolute bottom-[15%] left-[2%] w-[450px] h-[450px] rounded-full bg-signal/8 blur-[130px] pointer-events-none z-0" />
+
       <LoadSequence />
       <ScrollProgress />
       <Spotlight />
@@ -108,7 +153,7 @@ function Landing() {
         id="problem"
         eyebrow="The problem"
         title={<>Once a file leaves your <span className="italic text-muted-foreground">walls</span>, it's gone.</>}
-        intro="Traditional sharing depends on trust. Trust the recipient. Trust their inbox. Trust their laptop. TrustLayer replaces trust with cryptographic control."
+        intro="Traditional sharing depends on trust. Trust the recipient. Trust their inbox. Trust their laptop. SecureShare replaces trust with cryptographic control."
       >
         <ProblemSection />
       </Section>

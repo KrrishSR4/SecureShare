@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { gsap, ScrollTrigger } from "../lib/gsap";
 
 /* ---------- Reveal ---------- */
 export function Reveal({
@@ -217,7 +218,7 @@ export function Nav() {
       >
         <a href="#top" className="flex items-center gap-2">
           <LogoMark />
-          <span className="font-display text-xl">TrustLayer</span>
+          <span className="font-display text-xl">SecureShare</span>
         </a>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#product" className="transition-colors hover:text-ink">Product</a>
@@ -393,7 +394,7 @@ export function ProblemSection() {
     { icon: ArrowRight, label: "Email" },
     { icon: EyeOff, label: "Lost Control" },
   ];
-  const trustlayer = [
+  const secureshare = [
     { icon: FileText, label: "Upload" },
     { icon: Lock, label: "Encrypt" },
     { icon: ShieldCheck, label: "Apply Policy" },
@@ -403,7 +404,7 @@ export function ProblemSection() {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <FlowCard title="Traditional Sharing" subtitle="Trust the recipient. Hope for the best." steps={traditional} tone="warn" />
-      <FlowCard title="TrustLayer" subtitle="Trust the system. Enforce by default." steps={trustlayer} tone="ok" />
+      <FlowCard title="SecureShare" subtitle="Trust the system. Enforce by default." steps={secureshare} tone="ok" />
     </div>
   );
 }
@@ -484,7 +485,7 @@ export function ProductDemo() {
           <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
         </div>
         <div className="rounded-full border border-border bg-background px-3 py-1 font-mono text-[11px] text-muted-foreground">
-          app.trustlayer.io / rooms / project-atlas
+          app.secureshare.io / rooms / project-atlas
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="h-2 w-2 rounded-full bg-signal" /> live
@@ -691,7 +692,7 @@ function SharePanel() {
         <div className="eyebrow mb-2">Secure sharing link</div>
         <div className="flex items-center gap-2 rounded-xl border border-border bg-mist/60 px-3 py-3 font-mono text-xs">
           <Lock className="h-3.5 w-3.5" />
-          <span className="truncate">trustlayer.io/r/8f2a…c19d?k=●●●●●●●</span>
+          <span className="truncate">secureshare.io/r/8f2a…c19d?k=●●●●●●●</span>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3 text-center">
           {[
@@ -892,28 +893,40 @@ export function FeaturesBento() {
 /* ---------- Metrics ---------- */
 function Counter({ to, suffix = "", prefix = "" }: { to: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-20% 0px" });
-  const [val, setVal] = useState(0);
   useEffect(() => {
-    if (!inView) return;
-    const controls = animate(0, to, {
+    const el = ref.current;
+    if (!el) return;
+
+    const count = { val: 0 };
+    const format = (n: number) =>
+      n >= 1_000_000
+        ? (n / 1_000_000).toFixed(1) + "M"
+        : n >= 1_000
+          ? (n / 1_000).toFixed(0) + "K"
+          : Math.round(n).toString();
+
+    const t = gsap.to(count, {
+      val: to,
       duration: 2,
-      ease: [0.22, 1, 0.36, 1],
-      onUpdate: (v) => setVal(v),
+      ease: "power2.out",
+      scrollTrigger: {
+        trigger: el,
+        start: "top 95%",
+        toggleActions: "play none none none",
+      },
+      onUpdate: () => {
+        el.innerText = `${prefix}${format(count.val)}${suffix}`;
+      },
     });
-    return () => controls.stop();
-  }, [inView, to]);
-  const format = (n: number) =>
-    n >= 1_000_000
-      ? (n / 1_000_000).toFixed(1) + "M"
-      : n >= 1_000
-        ? (n / 1_000).toFixed(0) + "K"
-        : Math.round(n).toString();
+
+    return () => {
+      t.kill();
+    };
+  }, [to, prefix, suffix]);
+
   return (
     <span ref={ref}>
-      {prefix}
-      {format(val)}
-      {suffix}
+      {prefix}0{suffix}
     </span>
   );
 }
@@ -978,7 +991,7 @@ export function ArchitectureDiagram() {
 export function Testimonials() {
   const items = [
     {
-      q: "TrustLayer collapsed our data-sharing review from three weeks to an afternoon. The audit trail alone was worth the migration.",
+      q: "SecureShare collapsed our data-sharing review from three weeks to an afternoon. The audit trail alone was worth the migration.",
       n: "Elena Voss",
       r: "Chief Information Security Officer",
       c: "Meridian Health",
@@ -1087,7 +1100,7 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-2">
               <LogoMark />
-              <span className="font-display text-2xl">TrustLayer</span>
+              <span className="font-display text-2xl">SecureShare</span>
             </div>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive data at any moment.
@@ -1115,7 +1128,7 @@ export function Footer() {
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 text-xs text-muted-foreground md:flex-row md:items-center">
           <div className="flex items-center gap-4">
-            <span>© {new Date().getFullYear()} TrustLayer, Inc.</span>
+            <span>© {new Date().getFullYear()} SecureShare, Inc.</span>
             <a href="#" className="hover:text-ink">Privacy</a>
             <a href="#" className="hover:text-ink">Terms</a>
             <a href="#" className="hover:text-ink">DPA</a>
@@ -1126,7 +1139,7 @@ export function Footer() {
         {/* massive wordmark */}
         <div className="pointer-events-none mt-16 overflow-hidden">
           <div className="font-display text-[18vw] leading-none tracking-tighter text-ink/[0.05]">
-            TrustLayer
+            SecureShare
           </div>
         </div>
       </div>
@@ -1157,7 +1170,7 @@ export function LoadSequence() {
           className="flex items-center gap-3"
         >
           <LogoMark />
-          <span className="font-display text-3xl">TrustLayer</span>
+          <span className="font-display text-3xl">SecureShare</span>
         </motion.div>
         <div className="h-px w-40 overflow-hidden bg-border">
           <motion.div
