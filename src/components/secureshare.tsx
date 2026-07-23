@@ -39,41 +39,131 @@ export function Reveal({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        el,
+        { opacity: 0, y },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          delay,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 90%",
+            toggleActions: "play none none none",
+          },
+        }
+      );
+    }, el);
+
+    return () => ctx.revert();
+  }, [delay, y]);
+
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
+    <div ref={ref} className={className}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 /* ---------- Word-by-word reveal ---------- */
 export function WordReveal({ text, className }: { text: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px" });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const ctx = gsap.context(() => {
+      const spans = el.querySelectorAll(".word-span-inner");
+      if (!spans.length) return;
+
+      gsap.fromTo(
+        spans,
+        { y: "110%" },
+        {
+          y: "0%",
+          duration: 0.8,
+          stagger: 0.03,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: el,
+            start: "top 90%",
+            toggleActions: "play none none none",
+          },
+        }
+      );
+    }, el);
+
+    return () => ctx.revert();
+  }, [text]);
+
   const words = text.split(" ");
   return (
     <span ref={ref} className={cn("inline", className)}>
       {words.map((w, i) => (
         <span key={i} className="inline-block overflow-hidden align-bottom">
-          <motion.span
-            className="inline-block"
-            initial={{ y: "110%" }}
-            animate={inView ? { y: "0%" } : {}}
-            transition={{ duration: 0.9, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <span className="word-span-inner inline-block">
             {w}
             {i < words.length - 1 ? "\u00A0" : ""}
-          </motion.span>
+          </span>
         </span>
       ))}
     </span>
+  );
+}
+
+/* ---------- Spotlight Card ---------- */
+export function SpotlightCard({
+  children,
+  className,
+  glowColor = "oklch(0.62 0.16 148 / 0.12)",
+}: {
+  children: ReactNode;
+  className?: string;
+  glowColor?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={handleMouseMove}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl border border-border bg-surface-elevated transition-all duration-300 hover:border-ink/80",
+        className
+      )}
+      style={{
+        "--mouse-x": `${coords.x}px`,
+        "--mouse-y": `${coords.y}px`,
+      } as any}
+    >
+      <div
+        className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          background: `radial-gradient(350px circle at var(--mouse-x) var(--mouse-y), ${glowColor}, transparent 80%)`,
+        }}
+      />
+      {children}
+    </div>
   );
 }
 
@@ -420,11 +510,12 @@ function FlowCard({
   tone: "ok" | "warn";
 }) {
   return (
-    <div
+    <SpotlightCard
+      glowColor={tone === "warn" ? "oklch(0.55 0.22 27 / 0.08)" : undefined}
       className={cn(
-        "relative rounded-2xl border p-8",
+        "p-8",
         tone === "warn"
-          ? "border-destructive/30 bg-destructive/5"
+          ? "border-destructive/30 bg-destructive/5 hover:border-destructive/50"
           : "border-border bg-surface-elevated",
       )}
     >
@@ -462,7 +553,7 @@ function FlowCard({
           );
         })}
       </div>
-    </div>
+    </SpotlightCard>
   );
 }
 
@@ -817,24 +908,24 @@ export function PrivacyEngine() {
         {stages.map((s, i) => {
           const Icon = s.icon;
           return (
-            <Reveal key={s.t} delay={i * 0.08}>
-              <div className="group relative flex h-full flex-col rounded-2xl border border-border bg-background p-5 transition-colors hover:border-ink">
+            <Reveal key={s.t} delay={i * 0.08} className="relative">
+              <SpotlightCard className="flex h-full flex-col p-5 bg-background hover:-translate-y-1 transition-all duration-300">
                 <div className="mb-8 flex items-center justify-between">
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <Icon className="h-4 w-4" strokeWidth={1.6} />
                 </div>
-                <div className="mt-auto">
+                <div className="mt-auto text-left">
                   <div className="font-display text-lg leading-tight">{s.t}</div>
                   <div className="mt-1 text-xs text-muted-foreground">{s.d}</div>
                 </div>
-                {i < stages.length - 1 && (
-                  <div className="absolute right-[-10px] top-1/2 hidden -translate-y-1/2 md:block">
-                    <ArrowRight className="h-4 w-4 text-border-strong" />
-                  </div>
-                )}
-              </div>
+              </SpotlightCard>
+              {i < stages.length - 1 && (
+                <div className="absolute right-[-10px] top-1/2 -translate-y-1/2 hidden md:block z-20 pointer-events-none">
+                  <ArrowRight className="h-4 w-4 text-border-strong" />
+                </div>
+              )}
             </Reveal>
           );
         })}
@@ -869,20 +960,18 @@ export function FeaturesBento() {
               : "";
         return (
           <Reveal key={c.title} delay={i * 0.04}>
-            <motion.div
-              whileHover={{ y: -3 }}
+            <SpotlightCard
               className={cn(
-                "group relative flex h-full min-h-[180px] flex-col justify-between overflow-hidden rounded-2xl border border-border bg-surface-elevated p-6 transition-colors hover:border-ink",
-                span,
+                "flex h-full min-h-[180px] flex-col justify-between p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
+                span
               )}
             >
               <Icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-ink" strokeWidth={1.6} />
-              <div>
+              <div className="mt-8">
                 <h4 className="font-display text-xl leading-tight md:text-2xl">{c.title}</h4>
                 <p className="mt-2 max-w-sm text-sm text-muted-foreground">{c.desc}</p>
               </div>
-              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-ink/[0.03] blur-2xl transition-opacity group-hover:bg-ink/[0.06]" />
-            </motion.div>
+            </SpotlightCard>
           </Reveal>
         );
       })}
