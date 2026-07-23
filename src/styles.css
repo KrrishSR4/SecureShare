@@ -192,3 +192,11 @@
 @utility animate-dash {
   animation: dash 1.6s linear infinite;
 }
+
+@keyframes laser-pulse {
+  from { stroke-dashoffset: 130; }
+  to { stroke-dashoffset: -130; }
+}
+@utility animate-laser-pulse {
+  animation: laser-pulse 4s linear infinite;
+}

@@ -342,104 +342,333 @@ export function LogoMark() {
 
 /* ---------- Hero visualization ---------- */
 export function HeroVisualization() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // 3D Mouse Tilt Logic
+    const container = containerRef.current;
+    const card = cardRef.current;
+    if (!container || !card) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotateX = -(y / rect.height) * 8; // subtle rotation
+      const rotateY = (x / rect.width) * 8;
+
+      gsap.to(card, {
+        rotateX,
+        rotateY,
+        transformPerspective: 1000,
+        ease: "power2.out",
+        duration: 0.5,
+      });
+    };
+
+    const onMouseLeave = () => {
+      gsap.to(card, {
+        rotateX: 0,
+        rotateY: 0,
+        ease: "power2.out",
+        duration: 0.8,
+      });
+    };
+
+    container.addEventListener("mousemove", onMouseMove);
+    container.addEventListener("mouseleave", onMouseLeave);
+
+    // Sequential Workflow Timeline
+    const ctx = gsap.context(() => {
+      // 1. Initial State Setting
+      gsap.set([".file-node", ".core-node", ".policy-badge", ".recipient-node", ".link-node", ".audit-log-line", ".laser-left-path", ".laser-right-path"], {
+        opacity: 0,
+        y: 10,
+        scale: 0.98,
+      });
+      gsap.set(".core-shield", { scale: 0.85, opacity: 0.4 });
+      gsap.set(".binary-matrix", { opacity: 0 });
+      gsap.set([".laser-left-pulse", ".laser-right-pulse"], { strokeDashoffset: 180 });
+
+      const mainTl = gsap.timeline({ repeat: -1, repeatDelay: 3.5 });
+
+      mainTl
+        // Step 1: File appears on the left
+        .to(".file-node", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: "power3.out"
+        })
+
+        // Step 2: Connection line and core node appear in the center
+        .to([".core-node", ".laser-left-path"], {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: "power3.out"
+        }, "-=0.2")
+
+        // Step 3: File packet (laser) travels from left to central encryption node
+        .to(".laser-left-pulse", {
+          strokeDashoffset: 0,
+          duration: 0.8,
+          ease: "power2.inOut"
+        }, "-=0.3")
+
+        // Step 4: Shield pulses once encryption starts
+        .to(".core-shield", {
+          scale: 1.15,
+          opacity: 1,
+          stroke: "oklch(0.62 0.16 148)", // subtle green
+          duration: 0.35,
+          ease: "power2.out"
+        })
+        .to(".core-shield", {
+          scale: 1,
+          duration: 0.25,
+          ease: "power2.in"
+        })
+
+        // Step 5: File transforms into encrypted blocks (binary overlay fades in and flickers)
+        .to(".binary-matrix", {
+          opacity: 0.8,
+          duration: 0.35,
+          ease: "none"
+        }, "-=0.5")
+
+        // Step 6: Privacy Policy Enforced badge is automatically applied
+        .to(".policy-badge", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.5,
+          ease: "back.out(1.5)"
+        }, "-=0.1")
+
+        // Step 7: Encrypted packet travels along the connection lines to the right
+        .to(".laser-right-path", {
+          opacity: 1,
+          duration: 0.3
+        }, "-=0.1")
+        .to(".laser-right-pulse", {
+          strokeDashoffset: 0,
+          duration: 0.8,
+          ease: "power2.inOut"
+        }, "-=0.2")
+
+        // Step 8: Recipient verification badge appears
+        .to(".recipient-node", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.5,
+          ease: "power3.out"
+        }, "-=0.4")
+
+        // Step 9: Secure share link generated (success state green check)
+        .to(".link-node", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.5,
+          ease: "power3.out"
+        }, "-=0.2")
+
+        // Step 10: Audit log console records the transaction
+        .to(".audit-log-line", {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.6,
+          ease: "power2.out"
+        }, "-=0.1")
+
+        // Step 11: Final State breathing animation (subtle scaling of elements to feel alive)
+        .to([".file-node", ".link-node", ".core-node"], {
+          scale: 1.012,
+          duration: 1.5,
+          yoyo: true,
+          repeat: 1,
+          ease: "sine.inOut"
+        });
+
+    }, card);
+
+    return () => {
+      container.removeEventListener("mousemove", onMouseMove);
+      container.removeEventListener("mouseleave", onMouseLeave);
+      ctx.revert();
+    };
+  }, []);
+
   return (
-    <div className="relative h-[440px] w-full overflow-hidden rounded-2xl border border-border bg-surface-elevated">
-      {/* grid lines */}
-      <svg className="absolute inset-0 h-full w-full text-border/60" aria-hidden>
-        <defs>
-          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M40 0H0V40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-      </svg>
+    <div ref={containerRef} className="relative w-full py-4 flex items-center justify-center [perspective:1000px] z-10">
+      <div
+        ref={cardRef}
+        className="relative h-[400px] w-full overflow-hidden rounded-2xl border border-border bg-surface-elevated shadow-[0_15px_45px_rgba(0,0,0,0.12)] [transform-style:preserve-3d]"
+      >
+        {/* Subtle grid background */}
+        <svg className="absolute inset-0 h-full w-full text-border/20 pointer-events-none" aria-hidden="true">
+          <defs>
+            <pattern id="clean-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+              <path d="M30 0H0V30" fill="none" stroke="currentColor" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#clean-grid)" />
+        </svg>
 
-      {/* central lock */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <motion.div
-          initial={{ scale: 0.6, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="relative grid h-28 w-28 place-items-center rounded-2xl border border-border-strong bg-background shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)]"
-        >
-          <span className="absolute inset-0 rounded-2xl border border-ink/20 animate-pulse-ring" />
-          <ShieldCheck className="h-10 w-10" strokeWidth={1.4} />
-          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-border bg-background px-2 py-0.5 font-mono text-[10px] tracking-wider">
-            AES-256
-          </span>
-        </motion.div>
-      </div>
-
-      {/* animated network lines */}
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 600 440" preserveAspectRatio="none">
-        {[
-          "M80,80 C200,80 260,220 300,220",
-          "M520,80 C400,80 340,220 300,220",
-          "M80,360 C200,360 260,220 300,220",
-          "M520,360 C400,360 340,220 300,220",
-          "M300,40 L300,180",
-          "M300,260 L300,400",
-        ].map((d, i) => (
-          <motion.path
-            key={i}
-            d={d}
+        {/* Connection Paths (SVG) */}
+        <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 600 400" preserveAspectRatio="none">
+          {/* Base inactive connection lines */}
+          <path
+            d="M 170 160 C 220 160, 240 200, 300 200"
             fill="none"
             stroke="currentColor"
-            strokeOpacity={0.35}
-            strokeWidth="1"
-            strokeDasharray="4 6"
-            className="animate-dash text-ink"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1.4, delay: 0.6 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+            strokeOpacity={0.08}
+            strokeWidth="1.2"
           />
-        ))}
-      </svg>
+          <path
+            d="M 300 200 C 350 200, 370 120, 430 120"
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.08}
+            strokeWidth="1.2"
+          />
+          <path
+            d="M 300 200 C 350 200, 370 240, 430 240"
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.08}
+            strokeWidth="1.2"
+          />
 
-      {/* floating nodes */}
-      {[
-        { top: "12%", left: "8%", label: "dataset.parquet", meta: "2.4 GB · encrypted", icon: Database },
-        { top: "12%", right: "8%", label: "policy.yaml", meta: "GDPR + HIPAA", icon: FileText },
-        { bottom: "12%", left: "8%", label: "recipients", meta: "8 verified", icon: Users },
-        { bottom: "12%", right: "8%", label: "audit.log", meta: "live", icon: Activity },
-      ].map((n, i) => {
-        const Icon = n.icon;
-        return (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.9 + i * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute animate-floaty"
-            style={n as any}
-          >
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-background/90 px-3 py-2 backdrop-blur">
-              <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
-              <div className="text-left">
-                <div className="font-mono text-[11px]">{n.label}</div>
-                <div className="text-[10px] text-muted-foreground">{n.meta}</div>
+          {/* Left connection path (dynamic reveal line) */}
+          <path
+            className="laser-left-path"
+            d="M 170 160 C 220 160, 240 200, 300 200"
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.25}
+            strokeWidth="1.2"
+          />
+          {/* Right connection path (dynamic reveal line) */}
+          <path
+            className="laser-right-path"
+            d="M 300 200 C 350 200, 370 240, 430 240"
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.25}
+            strokeWidth="1.2"
+          />
+
+          {/* Glowing laser pulse segments */}
+          <path
+            className="laser-left-pulse text-signal"
+            d="M 170 160 C 220 160, 240 200, 300 200"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeDasharray="20 160"
+            strokeLinecap="round"
+          />
+          <path
+            className="laser-right-pulse text-signal"
+            d="M 300 200 C 350 200, 370 240, 430 240"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeDasharray="20 160"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        {/* Source File (Left Side) */}
+        <div className="file-node absolute left-[6%] top-[120px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+            <div className="p-2 rounded-lg bg-mist text-muted-foreground">
+              <FileText className="h-5 w-5" strokeWidth={1.5} />
+            </div>
+            <div className="text-left font-sans">
+              <div className="text-xs font-semibold text-ink">diligence_report.pdf</div>
+              <div className="text-[10px] text-muted-foreground">2.4 MB · PDF Document</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Encryption Hub (Center) */}
+        <div className="core-node absolute left-1/2 top-[200px] -translate-x-1/2 -translate-y-1/2 [transform:translateZ(15px)] pointer-events-none">
+          <div className="relative grid h-24 w-24 place-items-center rounded-full border border-border bg-background shadow-sm">
+            {/* Ambient revolving dashed border */}
+            <div
+              className="absolute inset-0 rounded-full border border-dashed border-border-strong animate-spin [animation-duration:40s]"
+              style={{ margin: "-3px" }}
+            />
+            <div className="flex flex-col items-center gap-1 z-10">
+              <ShieldCheck className="core-shield h-8 w-8 text-muted-foreground transition-all duration-300" strokeWidth={1.5} />
+              <span className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">
+                Vault
+              </span>
+            </div>
+
+            {/* Binary scramble overlay inside node */}
+            <div className="binary-matrix absolute inset-2 rounded-full overflow-hidden flex flex-wrap content-center justify-center gap-1 font-mono text-[7px] text-signal/45 leading-none select-none pointer-events-none">
+              <span>0</span><span>1</span><span>0</span>
+              <span>1</span><span>0</span><span>1</span>
+              <span>0</span><span>1</span><span>0</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Applied Policy Badge (Center-Bottom) */}
+        <div className="policy-badge absolute left-1/2 top-[275px] -translate-x-1/2 [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-[10px] font-medium text-muted-foreground shadow-sm">
+            <ShieldCheck className="h-3.5 w-3.5 text-signal" strokeWidth={1.8} />
+            <span>Policy: GDPR & SOC2 Enforced</span>
+          </div>
+        </div>
+
+        {/* Recipient Verification (Right Side - Top) */}
+        <div className="recipient-node absolute right-[6%] top-[75px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2 shadow-sm">
+            <Users className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            <div className="text-left font-sans">
+              <div className="text-[10px] font-semibold text-ink">Identity verified</div>
+              <div className="text-[9px] text-signal flex items-center gap-1">
+                <span className="h-1 w-1 rounded-full bg-signal animate-pulse" /> alice@compliance.com
               </div>
             </div>
-          </motion.div>
-        );
-      })}
+          </div>
+        </div>
 
-      {/* particles */}
-      {Array.from({ length: 14 }).map((_, i) => (
-        <motion.span
-          key={i}
-          className="absolute h-1 w-1 rounded-full bg-ink/40"
-          style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, -20, 0],
-            opacity: [0.15, 0.6, 0.15],
-          }}
-          transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 3 }}
-        />
-      ))}
+        {/* Generated Share Link (Right Side - Bottom) */}
+        <div className="link-node absolute right-[6%] top-[180px] [transform:translateZ(10px)] select-none">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+            <div className="p-2 rounded-lg bg-signal/5 text-signal">
+              <Lock className="h-5 w-5" strokeWidth={1.5} />
+            </div>
+            <div className="text-left font-sans">
+              <div className="text-xs font-semibold text-ink flex items-center gap-1">
+                secureshare.io/r/atlas
+              </div>
+              <div className="text-[9px] text-muted-foreground">Signed & Encrypted Link</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Audit Log Console (Bottom) */}
+        <div className="audit-log-line absolute inset-x-6 bottom-4 [transform:translateZ(10px)]">
+          <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-mist/20 px-3.5 py-2.5 font-mono text-[9px] text-muted-foreground text-left shadow-inner">
+            <Terminal className="h-3.5 w-3.5 text-muted-foreground/60" />
+            <span className="text-muted-foreground/40">audit_daemon:</span>
+            <span className="text-signal font-semibold">success</span>
+            <span>- file_id: 8a7c92ae | policy_hash: 2c0a | access: verified</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

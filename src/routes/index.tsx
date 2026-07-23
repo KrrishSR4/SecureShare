@@ -73,6 +73,45 @@ function Landing() {
         scrub: 1.2,
       },
     });
+
+    // Staggered Page-Load Hero Timeline
+    const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
+
+    tl.fromTo(
+      ".hero-eyebrow",
+      { opacity: 0, y: 15 },
+      { opacity: 1, y: 0, duration: 0.8, delay: 0.2 }
+    )
+      .fromTo(
+        ".hero-title-line",
+        { opacity: 0, y: 35 },
+        { opacity: 1, y: 0, duration: 0.9, stagger: 0.12 },
+        "-=0.5"
+      )
+      .fromTo(
+        ".hero-description",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.8 },
+        "-=0.6"
+      )
+      .fromTo(
+        ".hero-buttons",
+        { opacity: 0, scale: 0.96 },
+        { opacity: 1, scale: 1, duration: 0.6 },
+        "-=0.5"
+      )
+      .fromTo(
+        ".hero-badges > div",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.08 },
+        "-=0.4"
+      )
+      .fromTo(
+        ".hero-visual",
+        { opacity: 0, scale: 0.94, rotateX: -8 },
+        { opacity: 1, scale: 1, rotateX: 0, duration: 1.2, ease: "power3.out" },
+        "-=0.6"
+      );
   }, []);
 
   return (
@@ -88,32 +127,34 @@ function Landing() {
       <Nav />
 
       {/* ============ HERO ============ */}
-      <section ref={heroRef} className="relative overflow-hidden pt-28 md:pt-32">
+      <section ref={heroRef} className="relative overflow-hidden pt-32 md:pt-40 pb-16">
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-[1400px] px-6 md:px-10">
-          <Reveal>
-            <div className="eyebrow flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-              Privacy Infrastructure · v1.0
-            </div>
-          </Reveal>
+          <div className="grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+            {/* Left Column (Text & CTAs) */}
+            <div className="flex flex-col items-start text-left">
+              <div className="hero-eyebrow opacity-0 eyebrow flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                Privacy Infrastructure · v1.0
+              </div>
 
-          <h1 className="mt-8 max-w-[16ch] font-display text-[13vw] leading-[0.95] tracking-tight md:text-[8.5vw] lg:text-[7.5rem]">
-            <WordReveal text="Data sharing" />
-            <br />
-            <span className="italic text-muted-foreground">
-              <WordReveal text="without trusting" />
-            </span>
-            <br />
-            <WordReveal text="anyone." />
-          </h1>
+              <h1 className="mt-6 max-w-[15ch] font-display text-[10vw] leading-[0.92] tracking-tight md:text-[6.5vw] lg:text-[4.85rem]">
+                <span className="hero-title-line inline-block opacity-0">
+                  Data <span className="bg-gradient-to-r from-foreground to-signal bg-clip-text text-transparent">sharing</span>
+                </span>
+                <br />
+                <span className="hero-title-line inline-block italic text-muted-foreground opacity-0">
+                  without trusting
+                </span>
+                <br />
+                <span className="hero-title-line inline-block opacity-0">anyone.</span>
+              </h1>
 
-          <div className="mt-10 grid gap-10 md:grid-cols-[1.2fr_1fr] md:items-end">
-            <Reveal delay={0.3}>
-              <p className="max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
+              <p className="hero-description opacity-0 mt-6 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
                 Securely share sensitive information with built-in encryption, automated privacy enforcement,
                 compliance validation, audit trails, and enterprise-grade access control.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
+
+              <div className="hero-buttons opacity-0 mt-8 flex flex-wrap items-center gap-3">
                 <MagneticButton variant="primary">
                   Request access <ArrowRight className="h-4 w-4" />
                 </MagneticButton>
@@ -121,7 +162,8 @@ function Landing() {
                   See how it works
                 </MagneticButton>
               </div>
-              <div className="mt-10 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
+
+              <div className="hero-badges mt-10 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-3.5 w-3.5" /> SOC 2 Type II
                 </div>
@@ -135,11 +177,12 @@ function Landing() {
                   <ShieldCheck className="h-3.5 w-3.5" /> GDPR
                 </div>
               </div>
-            </Reveal>
+            </div>
 
-            <Reveal delay={0.4} y={40}>
+            {/* Right Column (Vault Visualization) */}
+            <div className="hero-visual opacity-0 lg:mt-0 mt-8 w-full">
               <HeroVisualization />
-            </Reveal>
+            </div>
           </div>
         </motion.div>
 
