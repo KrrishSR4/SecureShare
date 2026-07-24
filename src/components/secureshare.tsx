@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "react";
-import { motion, useMotionValue, useSpring, useScroll, useTransform, useInView, animate } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useScroll,
+  useTransform,
+  useInView,
+  animate,
+} from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -54,7 +62,7 @@ export function Reveal({
           duration: 0.8,
           delay,
           ease: "power3.out",
-        }
+        },
       );
     }, el);
 
@@ -88,7 +96,7 @@ export function WordReveal({ text, className }: { text: string; className?: stri
           duration: 0.8,
           stagger: 0.03,
           ease: "power3.out",
-        }
+        },
       );
     }, el);
 
@@ -139,12 +147,14 @@ export function SpotlightCard({
       onMouseMove={handleMouseMove}
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-border bg-surface-elevated transition-all duration-300 hover:border-ink/80",
-        className
+        className,
       )}
-      style={{
-        "--mouse-x": `${coords.x}px`,
-        "--mouse-y": `${coords.y}px`,
-      } as any}
+      style={
+        {
+          "--mouse-x": `${coords.x}px`,
+          "--mouse-y": `${coords.y}px`,
+        } as React.CSSProperties
+      }
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
@@ -236,20 +246,24 @@ export function Spotlight() {
     <motion.div
       aria-hidden
       className="pointer-events-none fixed inset-0 z-[45] hidden lg:block"
-      style={{
-        background: `radial-gradient(400px circle at var(--sx) var(--sy), color-mix(in oklch, var(--ink) 6%, transparent), transparent 60%)`,
-      } as React.CSSProperties}
+      style={
+        {
+          background: `radial-gradient(400px circle at var(--sx) var(--sy), color-mix(in oklch, var(--ink) 6%, transparent), transparent 60%)`,
+        } as React.CSSProperties
+      }
     >
-      <motion.div
-        aria-hidden
-        style={{ x, y }}
-        className="absolute h-px w-px"
-      />
+      <motion.div aria-hidden style={{ x, y }} className="absolute h-px w-px" />
       <SpotlightCSS mx={x} my={y} />
     </motion.div>
   );
 }
-function SpotlightCSS({ mx, my }: { mx: any; my: any }) {
+function SpotlightCSS({
+  mx,
+  my,
+}: {
+  mx: import("framer-motion").MotionValue<number>;
+  my: import("framer-motion").MotionValue<number>;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const un1 = mx.on("change", (v: number) => ref.current?.style.setProperty("--sx", `${v}px`));
@@ -301,14 +315,27 @@ export function Nav() {
           <span className="font-display text-xl">SecureShare</span>
         </a>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-          <a href="#product" className="transition-colors hover:text-ink">Product</a>
-          <a href="#privacy" className="transition-colors hover:text-ink">Privacy Engine</a>
-          <a href="#features" className="transition-colors hover:text-ink">Features</a>
-          <a href="#security" className="transition-colors hover:text-ink">Security</a>
-          <a href="#customers" className="transition-colors hover:text-ink">Customers</a>
+          <a href="#product" className="transition-colors hover:text-ink">
+            Product
+          </a>
+          <a href="#privacy" className="transition-colors hover:text-ink">
+            Privacy Engine
+          </a>
+          <a href="#features" className="transition-colors hover:text-ink">
+            Features
+          </a>
+          <a href="#security" className="transition-colors hover:text-ink">
+            Security
+          </a>
+          <a href="#customers" className="transition-colors hover:text-ink">
+            Customers
+          </a>
         </nav>
         <div className="flex items-center gap-3">
-          <a href="#" className="hidden text-sm text-muted-foreground transition-colors hover:text-ink md:inline">
+          <a
+            href="#"
+            className="hidden text-sm text-muted-foreground transition-colors hover:text-ink md:inline"
+          >
             Sign in
           </a>
           <MagneticButton className="!py-2 !px-4 text-xs">
@@ -324,8 +351,21 @@ export function LogoMark() {
   return (
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden>
       <rect x="1" y="1" width="24" height="24" rx="6" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M8 13.5L11.5 17L18 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="13" cy="13" r="10" stroke="currentColor" strokeOpacity="0.15" strokeDasharray="2 3" />
+      <path
+        d="M8 13.5L11.5 17L18 10"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="13"
+        cy="13"
+        r="10"
+        stroke="currentColor"
+        strokeOpacity="0.15"
+        strokeDasharray="2 3"
+      />
     </svg>
   );
 }
@@ -341,7 +381,7 @@ export function HeroVisualization() {
     const card = cardRef.current;
     if (!container || !card) return;
 
-    const onMouseMove = (e: MouseEvent) => {
+    const onMouseMove = (e: globalThis.MouseEvent) => {
       const rect = card.getBoundingClientRect();
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
@@ -361,7 +401,7 @@ export function HeroVisualization() {
       const mouseY = e.clientY - rect.top;
 
       const nodes = card.querySelectorAll(".interactive-node");
-      nodes.forEach((nodeEl: any) => {
+      nodes.forEach((nodeEl: Element) => {
         const nRect = nodeEl.getBoundingClientRect();
         const nX = nRect.left - rect.left + nRect.width / 2;
         const nY = nRect.top - rect.top + nRect.height / 2;
@@ -377,7 +417,7 @@ export function HeroVisualization() {
             borderColor: "var(--border-strong)",
             boxShadow: "0 8px 24px rgba(0, 0, 0, 0.05)",
             duration: 0.35,
-            ease: "power2.out"
+            ease: "power2.out",
           });
         } else {
           gsap.to(nodeEl, {
@@ -385,7 +425,7 @@ export function HeroVisualization() {
             borderColor: "var(--color-border)",
             boxShadow: "none",
             duration: 0.45,
-            ease: "power2.out"
+            ease: "power2.out",
           });
         }
       });
@@ -400,13 +440,13 @@ export function HeroVisualization() {
       });
 
       const nodes = card.querySelectorAll(".interactive-node");
-      nodes.forEach((nodeEl: any) => {
+      nodes.forEach((nodeEl: Element) => {
         gsap.to(nodeEl, {
           scale: 1,
           borderColor: "var(--color-border)",
           boxShadow: "none",
           duration: 0.45,
-          ease: "power2.out"
+          ease: "power2.out",
         });
       });
     };
@@ -420,19 +460,40 @@ export function HeroVisualization() {
 
       // Helper function to restore initial state at the start
       const resetState = () => {
-        gsap.set([
-          ".node-file", ".node-engine", ".policy-tags", ".node-recipient",
-          ".node-link", ".audit-timeline", ".flow-path-left", ".flow-path-right"
-        ], { opacity: 0, y: 12, scale: 0.98 });
+        gsap.set(
+          [
+            ".node-file",
+            ".node-engine",
+            ".policy-tags",
+            ".node-recipient",
+            ".node-link",
+            ".audit-timeline",
+            ".flow-path-left",
+            ".flow-path-right",
+          ],
+          { opacity: 0, y: 12, scale: 0.98 },
+        );
         gsap.set(".engine-lock", { rotate: -45, opacity: 0.3 });
         gsap.set(".encrypted-blocks", { opacity: 0, scale: 0.9 });
         gsap.set([".packet-pulse-left", ".packet-pulse-right"], { strokeDashoffset: 180 });
         gsap.set(".revoke-action", { opacity: 0, y: 5, scale: 0.95 });
-        gsap.set(".recipient-status", { textContent: "Verification Pending", className: "text-muted-foreground text-[9px] flex items-center gap-1" });
+        gsap.set(".recipient-status", {
+          textContent: "Verification Pending",
+          className: "text-muted-foreground text-[9px] flex items-center gap-1",
+        });
         gsap.set(".recipient-dot", { backgroundColor: "#d1d5db" });
-        gsap.set(".link-text", { textContent: "secureshare.io/r/atlas", className: "text-xs font-semibold text-ink flex items-center gap-1" });
-        gsap.set(".log-message", { textContent: "system: standing by for secure upload request...", className: "text-muted-foreground/60 flex-1 truncate" });
-        gsap.set([".flow-path-right", ".packet-pulse-right"], { stroke: "currentColor", strokeOpacity: 0.25 });
+        gsap.set(".link-text", {
+          textContent: "secureshare.io/r/atlas",
+          className: "text-xs font-semibold text-ink flex items-center gap-1",
+        });
+        gsap.set(".log-message", {
+          textContent: "system: standing by for secure upload request...",
+          className: "text-muted-foreground/60 flex-1 truncate",
+        });
+        gsap.set([".flow-path-right", ".packet-pulse-right"], {
+          stroke: "currentColor",
+          strokeOpacity: 0.25,
+        });
       };
 
       resetState();
@@ -444,34 +505,42 @@ export function HeroVisualization() {
           y: 0,
           scale: 1,
           duration: 0.35,
-          ease: "power2.out"
+          ease: "power2.out",
         })
-        .to(".audit-timeline", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.25
-        }, "-=0.15")
+        .to(
+          ".audit-timeline",
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.25,
+          },
+          "-=0.15",
+        )
         .to(".log-message", {
           textContent: "audit: client initiated upload file - diligence_report.pdf (2.4MB)",
           className: "text-ink flex-1 truncate font-medium",
-          duration: 0.15
+          duration: 0.15,
         })
 
         // 2. Encryption Engine & Path appear
-        .to([".node-engine", ".flow-path-left"], {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.35,
-          ease: "power2.out"
-        }, "-=0.1")
+        .to(
+          [".node-engine", ".flow-path-left"],
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.35,
+            ease: "power2.out",
+          },
+          "-=0.1",
+        )
 
         // 3. File smoothly moves (laser pulse) to Encryption Hub
         .to(".packet-pulse-left", {
           strokeDashoffset: 0,
           duration: 0.55,
-          ease: "power2.inOut"
+          ease: "power2.inOut",
         })
 
         // 4. Lock snaps closed & displays encrypted binary blocks
@@ -480,68 +549,88 @@ export function HeroVisualization() {
           opacity: 1,
           stroke: "oklch(0.62 0.16 148)", // subtle green highlight
           duration: 0.25,
-          ease: "back.out(2)"
+          ease: "back.out(2)",
         })
-        .to(".encrypted-blocks", {
-          opacity: 0.9,
-          scale: 1,
-          duration: 0.25,
-          ease: "power2.out"
-        }, "-=0.1")
+        .to(
+          ".encrypted-blocks",
+          {
+            opacity: 0.9,
+            scale: 1,
+            duration: 0.25,
+            ease: "power2.out",
+          },
+          "-=0.1",
+        )
         .to(".log-message", {
           textContent: "audit: client-side AES-256 key applied. file encrypted locally.",
           className: "text-ink flex-1 truncate font-medium",
-          duration: 0.15
+          duration: 0.15,
         })
 
         // 5. Privacy Policy Engine (GDPR, HIPAA tags applied)
-        .to(".policy-tags", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.3,
-          stagger: 0.08,
-          ease: "back.out(1.4)"
-        }, "-=0.05")
+        .to(
+          ".policy-tags",
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.3,
+            stagger: 0.08,
+            ease: "back.out(1.4)",
+          },
+          "-=0.05",
+        )
 
         // 6. Curved paths to recipient appear and encrypted packet travels right
-        .to([".node-recipient", ".flow-path-right"], {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.35,
-          ease: "power2.out"
-        }, "-=0.1")
+        .to(
+          [".node-recipient", ".flow-path-right"],
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.35,
+            ease: "power2.out",
+          },
+          "-=0.1",
+        )
         .to(".packet-pulse-right", {
           strokeDashoffset: 0,
           duration: 0.55,
-          ease: "power2.inOut"
+          ease: "power2.inOut",
         })
 
         // 7. Secure Share Link is generated
-        .to(".node-link", {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.3,
-          ease: "power2.out"
-        }, "-=0.1")
+        .to(
+          ".node-link",
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.3,
+            ease: "power2.out",
+          },
+          "-=0.1",
+        )
         .to(".log-message", {
           textContent: "audit: secure link generated securely. policy checks active.",
           className: "text-ink flex-1 truncate font-medium",
-          duration: 0.15
+          duration: 0.15,
         })
 
         // 8. Recipient Identity gets verified
         .to(".recipient-status", {
           textContent: "Identity Verified",
           className: "text-signal font-semibold text-[9px] flex items-center gap-1",
-          duration: 0.15
+          duration: 0.15,
         })
-        .to(".recipient-dot", {
-          backgroundColor: "#10b981",
-          duration: 0.15
-        }, "-=0.15")
+        .to(
+          ".recipient-dot",
+          {
+            backgroundColor: "#10b981",
+            duration: 0.15,
+          },
+          "-=0.15",
+        )
 
         // 9. Instant Revoke option appears
         .to(".revoke-action", {
@@ -550,7 +639,7 @@ export function HeroVisualization() {
           scale: 1,
           duration: 0.35,
           delay: 0.8,
-          ease: "power2.out"
+          ease: "power2.out",
         })
 
         // 10. Click simulated on Revoke Access button
@@ -559,35 +648,44 @@ export function HeroVisualization() {
           borderColor: "rgba(239, 68, 68, 0.4)",
           duration: 0.1,
           yoyo: true,
-          repeat: 1
+          repeat: 1,
         })
 
         // 11. Revocation Actions take place immediately
         .to([".flow-path-right", ".packet-pulse-right"], {
           stroke: "#cbd5e1",
           strokeOpacity: 0.3,
-          duration: 0.2
+          duration: 0.2,
         })
         .to(".recipient-status", {
           textContent: "Access Denied",
           className: "text-red-500 font-semibold text-[9px] flex items-center gap-1",
-          duration: 0.2
+          duration: 0.2,
         })
-        .to(".recipient-dot", {
-          backgroundColor: "#ef4444",
-          duration: 0.2
-        }, "-=0.2")
-        .to(".link-text", {
-          textContent: "access_revoked",
-          className: "text-muted-foreground/50 line-through text-xs font-semibold flex items-center gap-1",
-          duration: 0.2
-        }, "-=0.2")
+        .to(
+          ".recipient-dot",
+          {
+            backgroundColor: "#ef4444",
+            duration: 0.2,
+          },
+          "-=0.2",
+        )
+        .to(
+          ".link-text",
+          {
+            textContent: "access_revoked",
+            className:
+              "text-muted-foreground/50 line-through text-xs font-semibold flex items-center gap-1",
+            duration: 0.2,
+          },
+          "-=0.2",
+        )
         .to(".log-message", {
-          textContent: "audit_daemon: WARNING - sender triggered INSTANT_REVOCATION. keys cleared, recipient access revoked.",
+          textContent:
+            "audit_daemon: WARNING - sender triggered INSTANT_REVOCATION. keys cleared, recipient access revoked.",
           className: "text-red-500 font-semibold flex-1 truncate",
-          duration: 0.2
+          duration: 0.2,
         });
-
     }, card);
 
     return () => {
@@ -598,13 +696,19 @@ export function HeroVisualization() {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full py-4 flex items-center justify-center [perspective:1000px] z-10">
+    <div
+      ref={containerRef}
+      className="relative w-full py-4 flex items-center justify-center [perspective:1000px] z-10"
+    >
       <div
         ref={cardRef}
         className="relative h-[400px] w-full max-w-[600px] overflow-hidden rounded-2xl border border-border bg-surface-elevated/70 backdrop-blur-sm shadow-[0_12px_36px_rgba(0,0,0,0.03)] [transform-style:preserve-3d]"
       >
         {/* Subtle grid background */}
-        <svg className="absolute inset-0 h-full w-full text-border/40 pointer-events-none" aria-hidden="true">
+        <svg
+          className="absolute inset-0 h-full w-full text-border/40 pointer-events-none"
+          aria-hidden="true"
+        >
           <defs>
             <pattern id="light-grid" width="30" height="30" patternUnits="userSpaceOnUse">
               <path d="M30 0H0V30" fill="none" stroke="currentColor" strokeWidth="0.5" />
@@ -614,7 +718,11 @@ export function HeroVisualization() {
         </svg>
 
         {/* Thin elegant connection lines (SVG) */}
-        <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 600 400" preserveAspectRatio="none">
+        <svg
+          className="absolute inset-0 h-full w-full pointer-events-none"
+          viewBox="0 0 600 400"
+          preserveAspectRatio="none"
+        >
           {/* Base lines */}
           <path
             d="M 220 157 C 235 157, 240 200, 252 200"
@@ -700,7 +808,10 @@ export function HeroVisualization() {
               style={{ margin: "-3px" }}
             />
             <div className="flex flex-col items-center gap-0.5 z-10">
-              <ShieldCheck className="engine-lock h-8 w-8 text-muted-foreground transition-all duration-300" strokeWidth={1.5} />
+              <ShieldCheck
+                className="engine-lock h-8 w-8 text-muted-foreground transition-all duration-300"
+                strokeWidth={1.5}
+              />
               <span className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">
                 Encrypt
               </span>
@@ -708,9 +819,15 @@ export function HeroVisualization() {
 
             {/* Encrypted Blocks grid overlay */}
             <div className="encrypted-blocks absolute inset-2 rounded-full overflow-hidden flex flex-wrap content-center justify-center gap-1 font-mono text-[7px] text-signal/55 leading-none select-none pointer-events-none">
-              <span>0</span><span>1</span><span>0</span>
-              <span>1</span><span>0</span><span>1</span>
-              <span>0</span><span>1</span><span>0</span>
+              <span>0</span>
+              <span>1</span>
+              <span>0</span>
+              <span>1</span>
+              <span>0</span>
+              <span>1</span>
+              <span>0</span>
+              <span>1</span>
+              <span>0</span>
             </div>
           </div>
         </div>
@@ -732,7 +849,8 @@ export function HeroVisualization() {
             <div className="text-left font-sans truncate">
               <div className="text-[10px] font-semibold text-ink truncate">Identity Verified</div>
               <div className="recipient-status text-[9px] text-muted-foreground flex items-center gap-1 truncate">
-                <span className="recipient-dot h-1.5 w-1.5 rounded-full bg-border transition-colors duration-300" /> alice@compliance.com
+                <span className="recipient-dot h-1.5 w-1.5 rounded-full bg-border transition-colors duration-300" />{" "}
+                alice@compliance.com
               </div>
             </div>
           </div>
@@ -827,8 +945,18 @@ export function ProblemSection() {
   ];
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <FlowCard title="Traditional Sharing" subtitle="Trust the recipient. Hope for the best." steps={traditional} tone="warn" />
-      <FlowCard title="SecureShare" subtitle="Trust the system. Enforce by default." steps={secureshare} tone="ok" />
+      <FlowCard
+        title="Traditional Sharing"
+        subtitle="Trust the recipient. Hope for the best."
+        steps={traditional}
+        tone="warn"
+      />
+      <FlowCard
+        title="SecureShare"
+        subtitle="Trust the system. Enforce by default."
+        steps={secureshare}
+        tone="ok"
+      />
     </div>
   );
 }
@@ -840,7 +968,7 @@ function FlowCard({
 }: {
   title: string;
   subtitle: string;
-  steps: { icon: any; label: string }[];
+  steps: { icon: React.ElementType; label: string }[];
   tone: "ok" | "warn";
 }) {
   return (
@@ -932,7 +1060,12 @@ export function ProductDemo() {
                   )}
                 >
                   <span className="flex items-center gap-2">
-                    <span className={cn("font-mono text-[10px]", i === step ? "text-background/70" : "")}>
+                    <span
+                      className={cn(
+                        "font-mono text-[10px]",
+                        i === step ? "text-background/70" : "",
+                      )}
+                    >
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     {s}
@@ -1040,7 +1173,10 @@ function RecipientsPanel() {
           >
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-full bg-mist font-mono text-[11px]">
-                {p.n.split(" ").map((x) => x[0]).join("")}
+                {p.n
+                  .split(" ")
+                  .map((x) => x[0])
+                  .join("")}
               </div>
               <div>
                 <div className="text-sm font-medium">{p.n}</div>
@@ -1074,7 +1210,9 @@ function PolicyPanel() {
       <div className="rounded-2xl border border-border bg-background p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="font-mono text-xs text-muted-foreground">policies/finance.v3.yaml</div>
-          <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] text-signal">active</span>
+          <span className="rounded-full bg-signal/15 px-2 py-0.5 font-mono text-[10px] text-signal">
+            active
+          </span>
         </div>
         <ul className="space-y-2">
           {items.map((it, i) => (
@@ -1200,7 +1338,8 @@ function RevokePanel() {
         <div className="eyebrow">Step 06</div>
         <h4 className="mt-2 font-display text-3xl">Revoke in one click.</h4>
         <p className="mt-2 text-sm text-muted-foreground">
-          Access keys are cryptographically invalidated. Even downloaded files can be rendered unreadable.
+          Access keys are cryptographically invalidated. Even downloaded files can be rendered
+          unreadable.
         </p>
       </div>
       <div className="rounded-2xl border border-border bg-background p-6">
@@ -1211,7 +1350,9 @@ function RevokePanel() {
             </div>
             <div>
               <div className="text-sm font-medium">marcus@northgate.io</div>
-              <div className="font-mono text-[11px] text-muted-foreground">access revoked · 12:11:04</div>
+              <div className="font-mono text-[11px] text-muted-foreground">
+                access revoked · 12:11:04
+              </div>
             </div>
           </div>
           <span className="rounded-full border border-destructive/40 px-3 py-1 text-xs text-destructive">
@@ -1271,36 +1412,71 @@ export function PrivacyEngine() {
 /* ---------- Features bento ---------- */
 export function FeaturesBento() {
   const cards = [
-    { title: "End-to-End Encryption", desc: "AES-256-GCM with per-recipient keys. Zero-knowledge by default.", icon: Lock, size: "lg" },
-    { title: "Automated Privacy Policies", desc: "Reusable, versioned policies enforced at the file level.", icon: ShieldCheck },
-    { title: "Compliance Monitoring", desc: "GDPR, HIPAA, SOC 2, ISO 27001 continuously validated.", icon: Fingerprint },
-    { title: "Secure Data Rooms", desc: "Purpose-built spaces for diligence, M&A, and clinical trials.", icon: Layers, size: "md" },
-    { title: "Fine-Grained Access Control", desc: "RBAC + ABAC. Down to the field.", icon: KeyRound },
+    {
+      title: "End-to-End Encryption",
+      desc: "AES-256-GCM with per-recipient keys. Zero-knowledge by default.",
+      icon: Lock,
+      size: "lg",
+    },
+    {
+      title: "Automated Privacy Policies",
+      desc: "Reusable, versioned policies enforced at the file level.",
+      icon: ShieldCheck,
+    },
+    {
+      title: "Compliance Monitoring",
+      desc: "GDPR, HIPAA, SOC 2, ISO 27001 continuously validated.",
+      icon: Fingerprint,
+    },
+    {
+      title: "Secure Data Rooms",
+      desc: "Purpose-built spaces for diligence, M&A, and clinical trials.",
+      icon: Layers,
+      size: "md",
+    },
+    {
+      title: "Fine-Grained Access Control",
+      desc: "RBAC + ABAC. Down to the field.",
+      icon: KeyRound,
+    },
     { title: "Real-Time Audit Logs", desc: "Streaming, immutable, exportable.", icon: Activity },
-    { title: "Secure API Integrations", desc: "REST, webhooks, signed events. SDKs for Node, Python, Go.", icon: Terminal, size: "md" },
-    { title: "Team Collaboration", desc: "Workspaces, comments, approvals. Never at the cost of control.", icon: Users },
+    {
+      title: "Secure API Integrations",
+      desc: "REST, webhooks, signed events. SDKs for Node, Python, Go.",
+      icon: Terminal,
+      size: "md",
+    },
+    {
+      title: "Team Collaboration",
+      desc: "Workspaces, comments, approvals. Never at the cost of control.",
+      icon: Users,
+    },
     { title: "Data Governance", desc: "Classify, tag, retain, delete. Provably.", icon: Database },
-    { title: "Instant Revocation", desc: "Kill access in milliseconds — even for downloaded files.", icon: Zap, size: "lg" },
+    {
+      title: "Instant Revocation",
+      desc: "Kill access in milliseconds — even for downloaded files.",
+      icon: Zap,
+      size: "lg",
+    },
   ];
   return (
     <div className="grid gap-4 md:grid-cols-4 md:grid-rows-3">
       {cards.map((c, i) => {
         const Icon = c.icon;
         const span =
-          c.size === "lg"
-            ? "md:col-span-2 md:row-span-1"
-            : c.size === "md"
-              ? "md:col-span-2"
-              : "";
+          c.size === "lg" ? "md:col-span-2 md:row-span-1" : c.size === "md" ? "md:col-span-2" : "";
         return (
           <Reveal key={c.title} delay={i * 0.04}>
             <SpotlightCard
               className={cn(
                 "flex h-full min-h-[180px] flex-col justify-between p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
-                span
+                span,
               )}
             >
-              <Icon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-ink" strokeWidth={1.6} />
+              <Icon
+                className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-ink"
+                strokeWidth={1.6}
+              />
               <div className="mt-8">
                 <h4 className="font-display text-xl leading-tight md:text-2xl">{c.title}</h4>
                 <p className="mt-2 max-w-sm text-sm text-muted-foreground">{c.desc}</p>
@@ -1314,7 +1490,15 @@ export function FeaturesBento() {
 }
 
 /* ---------- Metrics ---------- */
-function Counter({ to, suffix = "", prefix = "" }: { to: number; suffix?: string; prefix?: string }) {
+function Counter({
+  to,
+  suffix = "",
+  prefix = "",
+}: {
+  to: number;
+  suffix?: string;
+  prefix?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -1439,7 +1623,10 @@ export function Testimonials() {
             </blockquote>
             <figcaption className="mt-8 flex items-center gap-4 border-t border-border pt-6">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-ink font-mono text-xs text-background">
-                {t.n.split(" ").map((x) => x[0]).join("")}
+                {t.n
+                  .split(" ")
+                  .map((x) => x[0])
+                  .join("")}
               </div>
               <div>
                 <div className="text-sm font-medium">{t.n}</div>
@@ -1472,7 +1659,10 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("relative mx-auto max-w-[1400px] px-6 py-8 md:px-10 md:py-14", className)}>
+    <section
+      id={id}
+      className={cn("relative mx-auto max-w-[1400px] px-6 py-8 md:px-10 md:py-14", className)}
+    >
       {(eyebrow || title || intro) && (
         <div className="mb-8 max-w-3xl">
           {eyebrow && (
@@ -1521,7 +1711,8 @@ export function Footer() {
               <span className="font-display text-2xl">SecureShare</span>
             </div>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive data at any moment.
+              Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive
+              data at any moment.
             </p>
             <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-2 w-2 rounded-full bg-signal" />
@@ -1547,9 +1738,15 @@ export function Footer() {
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 text-xs text-muted-foreground md:flex-row md:items-center">
           <div className="flex items-center gap-4">
             <span>© {new Date().getFullYear()} SecureShare, Inc.</span>
-            <a href="#" className="hover:text-ink">Privacy</a>
-            <a href="#" className="hover:text-ink">Terms</a>
-            <a href="#" className="hover:text-ink">DPA</a>
+            <a href="#" className="hover:text-ink">
+              Privacy
+            </a>
+            <a href="#" className="hover:text-ink">
+              Terms
+            </a>
+            <a href="#" className="hover:text-ink">
+              DPA
+            </a>
           </div>
           <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
         </div>
