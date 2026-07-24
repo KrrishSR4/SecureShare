@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
@@ -18,6 +18,7 @@ import {
   ProductDemo,
   Reveal,
   ScrollProgress,
+  ScrollToTop,
   Section,
   Spotlight,
   Testimonials,
@@ -126,8 +127,8 @@ function Landing() {
               </p>
 
               <div className="hero-buttons opacity-0 mt-8 flex flex-wrap items-center gap-3">
-                <MagneticButton variant="primary">
-                  Request access <ArrowRight className="h-4 w-4" />
+                <MagneticButton variant="primary" to="/share">
+                  Start Sharing <ArrowRight className="h-4 w-4" />
                 </MagneticButton>
                 <MagneticButton variant="ghost">See how it works</MagneticButton>
               </div>
@@ -282,8 +283,8 @@ function Landing() {
               organizations.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
-              <MagneticButton variant="primary">
-                Request access <ArrowRight className="h-4 w-4" />
+              <MagneticButton variant="primary" to="/share">
+                Start Sharing <ArrowRight className="h-4 w-4" />
               </MagneticButton>
               <MagneticButton variant="ghost">Talk to security</MagneticButton>
             </div>
@@ -292,6 +293,7 @@ function Landing() {
       </section>
 
       <Footer />
+      <ScrollToTop />
     </div>
   );
 }

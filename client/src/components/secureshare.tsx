@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   motion,
   useMotionValue,
@@ -7,9 +8,11 @@ import {
   useTransform,
   useInView,
   animate,
+  AnimatePresence,
 } from "framer-motion";
 import {
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
   Lock,
   ShieldCheck,
@@ -167,25 +170,31 @@ export function SpotlightCard({
   );
 }
 
+const MotionLink = motion(Link);
+
 /* ---------- Magnetic Button ---------- */
 export function MagneticButton({
   children,
   variant = "primary",
   className,
   href,
+  to,
+  onClick,
 }: {
   children: ReactNode;
   variant?: "primary" | "ghost";
   className?: string;
   href?: string;
+  to?: string;
+  onClick?: () => void;
 }) {
-  const ref = useRef<HTMLAnchorElement>(null);
+  const ref = useRef<any>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const sx = useSpring(x, { stiffness: 220, damping: 18, mass: 0.5 });
   const sy = useSpring(y, { stiffness: 220, damping: 18, mass: 0.5 });
 
-  const onMove = (e: MouseEvent<HTMLAnchorElement>) => {
+  const onMove = (e: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -198,23 +207,53 @@ export function MagneticButton({
   };
 
   const base =
-    "group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors";
+    "group relative inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors cursor-pointer";
   const styles =
     variant === "primary"
       ? "bg-ink text-background hover:bg-ink/90"
       : "border border-border-strong text-ink hover:bg-mist";
 
+  if (to) {
+    return (
+      <MotionLink
+        ref={ref}
+        to={to}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        style={{ x: sx, y: sy }}
+        className={cn(base, styles, className)}
+      >
+        {children}
+      </MotionLink>
+    );
+  }
+
+  if (href) {
+    return (
+      <motion.a
+        ref={ref}
+        href={href}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        style={{ x: sx, y: sy }}
+        className={cn(base, styles, className)}
+      >
+        {children}
+      </motion.a>
+    );
+  }
+
   return (
-    <motion.a
+    <motion.button
       ref={ref}
-      href={href ?? "#"}
-      onMouseMove={onMove}
+      onClick={onClick}
+      onMouseMove={onMove as any}
       onMouseLeave={onLeave}
       style={{ x: sx, y: sy }}
       className={cn(base, styles, className)}
     >
       {children}
-    </motion.a>
+    </motion.button>
   );
 }
 
@@ -338,9 +377,12 @@ export function Nav() {
           >
             Sign in
           </a>
-          <MagneticButton className="!py-2 !px-4 text-xs">
-            Request access <ArrowRight className="h-3.5 w-3.5" />
-          </MagneticButton>
+          <Link
+            to="/share"
+            className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-background transition-colors hover:bg-ink/90"
+          >
+            Start Sharing <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+          </Link>
         </div>
       </div>
     </motion.header>
@@ -476,6 +518,7 @@ export function HeroVisualization() {
         gsap.set(".engine-lock", { rotate: -45, opacity: 0.3 });
         gsap.set(".encrypted-blocks", { opacity: 0, scale: 0.9 });
         gsap.set([".packet-pulse-left", ".packet-pulse-right"], { strokeDashoffset: 180 });
+        gsap.set(["#dot-left", "#dot-right"], { opacity: 0 });
         gsap.set(".revoke-action", { opacity: 0, y: 5, scale: 0.95 });
         gsap.set(".recipient-status", {
           textContent: "Verification Pending",
@@ -537,11 +580,22 @@ export function HeroVisualization() {
         )
 
         // 3. File smoothly moves (laser pulse) to Encryption Hub
+        .set("#dot-left", { opacity: 1 })
         .to(".packet-pulse-left", {
           strokeDashoffset: 0,
           duration: 0.55,
           ease: "power2.inOut",
         })
+        .to("#dot-left", {
+          motionPath: {
+            path: ".flow-path-left",
+            align: ".flow-path-left",
+            alignOrigin: [0.5, 0.5],
+          },
+          duration: 0.55,
+          ease: "power2.inOut",
+        }, "<")
+        .set("#dot-left", { opacity: 0 })
 
         // 4. Lock snaps closed & displays encrypted binary blocks
         .to(".engine-lock", {
@@ -593,11 +647,22 @@ export function HeroVisualization() {
           },
           "-=0.1",
         )
+        .set("#dot-right", { opacity: 1 })
         .to(".packet-pulse-right", {
           strokeDashoffset: 0,
           duration: 0.55,
           ease: "power2.inOut",
         })
+        .to("#dot-right", {
+          motionPath: {
+            path: ".flow-path-right",
+            align: ".flow-path-right",
+            alignOrigin: [0.5, 0.5],
+          },
+          duration: 0.55,
+          ease: "power2.inOut",
+        }, "<")
+        .set("#dot-right", { opacity: 0 })
 
         // 7. Secure Share Link is generated
         .to(
@@ -784,6 +849,10 @@ export function HeroVisualization() {
             strokeDasharray="20 160"
             strokeLinecap="round"
           />
+
+          {/* Physical dots for MotionPath animations */}
+          <circle id="dot-left" r="3.5" className="fill-signal" style={{ opacity: 0 }} />
+          <circle id="dot-right" r="3.5" className="fill-signal" style={{ opacity: 0 }} />
         </svg>
 
         {/* Source File (Left Side) */}
@@ -1701,9 +1770,199 @@ export function Footer() {
     { t: "Developers", l: ["Documentation", "API Reference", "SDKs", "Changelog", "Webhooks"] },
     { t: "Company", l: ["About", "Customers", "Careers", "Press", "Contact"] },
   ];
+
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gradRef = useRef<SVGRadialGradientElement>(null);
+
+  const onMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    const grad = gradRef.current;
+    if (!svg || !grad) return;
+
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 1000;
+    const y = ((e.clientY - rect.top) / rect.height) * 150;
+
+    // 3D Perspective Tilt calculations relative to SVG center
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateY = ((e.clientX - rect.left - centerX) / centerX) * 8; // Max 8 degrees Y axis rotation
+    const rotateX = -((e.clientY - rect.top - centerY) / centerY) * 15; // Max 15 degrees X axis rotation
+
+    // Directly set SVG attributes
+    grad.setAttribute("cx", `${x}`);
+    grad.setAttribute("cy", `${y}`);
+    grad.setAttribute("fx", `${x}`);
+    grad.setAttribute("fy", `${y}`);
+
+    // Apply 3D perspective tilt smoothly on hover
+    gsap.to(svg, {
+      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
+      duration: 0.3,
+      ease: "power2.out",
+      overwrite: "auto",
+    });
+  };
+
+  const onMouseEnter = () => {
+    const grad = gradRef.current;
+    if (!grad) return;
+    
+    // Scale up the gradient spotlight radius smoothly on hover
+    gsap.to(grad, {
+      attr: { r: 250 },
+      duration: 0.45,
+      ease: "power2.out",
+    });
+  };
+
+  const onMouseLeave = () => {
+    const grad = gradRef.current;
+    const svg = svgRef.current;
+    if (!grad || !svg) return;
+    
+    // Collapse the spotlight radius and return light position to center on exit
+    gsap.to(grad, {
+      attr: { cx: 500, cy: 75, fx: 500, fy: 75, r: 0 },
+      duration: 0.65,
+      ease: "power2.out",
+    });
+
+    // Reset 3D tilt smoothly
+    gsap.to(svg, {
+      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
+      duration: 0.8,
+      ease: "power2.out",
+      overwrite: "auto",
+    });
+  };
+
+  const colorPalette = ["#10b981", "#00d2ff", "#7928ca", "#ff007a"];
+  const colorOffsetRef = useRef(0);
+
+  const getShiftedPalette = (offset: number) => {
+    return [
+      colorPalette[(offset + 0) % colorPalette.length],
+      colorPalette[(offset + 1) % colorPalette.length],
+      colorPalette[(offset + 2) % colorPalette.length],
+      colorPalette[(offset + 3) % colorPalette.length],
+    ];
+  };
+
+  const createExplosion = (x: number, y: number, activePalette: string[]) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    // Use current rotated colors plus white hot highlight for particles
+    const colors = [...activePalette, "#ffffff"];
+    const particleCount = 18;
+
+    for (let i = 0; i < particleCount; i++) {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      
+      circle.setAttribute("cx", `${x}`);
+      circle.setAttribute("cy", `${y}`);
+      circle.setAttribute("r", `${Math.random() * 3 + 1.5}`);
+      circle.setAttribute("fill", colors[Math.floor(Math.random() * colors.length)]);
+      circle.setAttribute("opacity", "0.95");
+      circle.setAttribute("style", "pointer-events: none;");
+      
+      svg.appendChild(circle);
+
+      const angle = Math.random() * Math.PI * 2;
+      const velocity = Math.random() * 110 + 30;
+      const targetX = x + Math.cos(angle) * velocity;
+      const targetY = y + Math.sin(angle) * velocity;
+
+      gsap.to(circle, {
+        attr: { cx: targetX, cy: targetY, r: 0 },
+        opacity: 0,
+        duration: Math.random() * 0.45 + 0.4,
+        ease: "power2.out",
+        onComplete: () => {
+          if (circle.parentNode) {
+            circle.parentNode.removeChild(circle);
+          }
+        },
+      });
+    }
+  };
+
+  const onMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    const grad = gradRef.current;
+    if (!svg || !grad) return;
+
+    // Cycle palette offset on click
+    colorOffsetRef.current = colorOffsetRef.current + 1;
+    const activePalette = getShiftedPalette(colorOffsetRef.current);
+
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 1000;
+    const y = ((e.clientY - rect.top) / rect.height) * 150;
+    
+    // 1. Compress layout on click for high-fidelity mechanical click feel
+    gsap.to(svg, {
+      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(0.94, 0.94, 0.94)",
+      duration: 0.1,
+      ease: "power2.out",
+      overwrite: "auto",
+    });
+
+    // 2. Explode the spotlight radius to instantly cover the entire text with colored light
+    gsap.to(grad, {
+      attr: { r: 1200 },
+      duration: 0.22,
+      ease: "power3.out",
+    });
+
+    // 3. Flash stops to white-hot neon color shockwaves based on active rotated palette
+    const stops = grad.querySelectorAll("stop");
+    if (stops.length >= 4) {
+      gsap.to(stops[0], { stopColor: "#ffffff", duration: 0.08 }); // center white hot flash
+      gsap.to(stops[1], { stopColor: activePalette[1], duration: 0.12 });
+      gsap.to(stops[2], { stopColor: activePalette[2], duration: 0.15 });
+      gsap.to(stops[3], { stopColor: activePalette[3], duration: 0.18 });
+    }
+
+    // 4. Trigger the custom neon particle explosion matching the rotated color scheme
+    createExplosion(x, y, activePalette);
+  };
+
+  const onMouseUp = () => {
+    const svg = svgRef.current;
+    const grad = gradRef.current;
+    if (!svg || !grad) return;
+    
+    // 1. Spring-elastic rebound bounce
+    gsap.to(svg, {
+      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1.02, 1.02, 1.02)",
+      duration: 0.55,
+      ease: "elastic.out(1.2, 0.4)",
+      overwrite: "auto",
+    });
+
+    // 2. Return spotlight radius to normal hover dimensions
+    gsap.to(grad, {
+      attr: { r: 250 },
+      duration: 0.5,
+      ease: "power2.out",
+    });
+
+    // 3. Smoothly restore active rotated palette color stops (retains rotated state!)
+    const activePalette = getShiftedPalette(colorOffsetRef.current);
+    const stops = grad.querySelectorAll("stop");
+    if (stops.length >= 4) {
+      gsap.to(stops[0], { stopColor: activePalette[0], duration: 0.35 });
+      gsap.to(stops[1], { stopColor: activePalette[1], duration: 0.35 });
+      gsap.to(stops[2], { stopColor: activePalette[2], duration: 0.35 });
+      gsap.to(stops[3], { stopColor: activePalette[3], duration: 0.35 });
+    }
+  };
+
   return (
     <footer className="border-t border-border bg-surface">
-      <div className="mx-auto max-w-[1400px] px-6 py-20 md:px-10">
+      <div className="mx-auto max-w-[1400px] px-6 py-20 pb-0 md:px-10 md:pb-0">
         <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(5,1fr)]">
           <div>
             <div className="flex items-center gap-2">
@@ -1750,13 +2009,51 @@ export function Footer() {
           </div>
           <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
         </div>
+      </div>
 
-        {/* massive wordmark */}
-        <div className="pointer-events-none mt-16 overflow-hidden">
-          <div className="font-display text-[18vw] leading-none tracking-tighter text-ink/[0.05]">
+      <div className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-pointer">
+        <svg
+          ref={svgRef}
+          onMouseMove={onMouseMove}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onMouseDown={onMouseDown}
+          onMouseUp={onMouseUp}
+          viewBox="0 0 1000 150"
+          className="w-full h-auto text-ink/[0.035] transition-all duration-75"
+          style={{ transformOrigin: "center" }}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <radialGradient
+              id="text-spotlight"
+              ref={gradRef}
+              cx="500"
+              cy="75"
+              r="0"
+              fx="500"
+              fy="75"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor="#10b981" />
+              <stop offset="25%" stopColor="#00d2ff" />
+              <stop offset="55%" stopColor="#7928ca" />
+              <stop offset="78%" stopColor="#ff007a" />
+              <stop offset="100%" stopColor="#111318" stopOpacity="0.035" />
+            </radialGradient>
+          </defs>
+          <text
+            x="50%"
+            y="130"
+            textAnchor="middle"
+            className="font-sans font-black"
+            fontSize="155"
+            letterSpacing="-0.06em"
+            fill="url(#text-spotlight)"
+          >
             SecureShare
-          </div>
-        </div>
+          </text>
+        </svg>
       </div>
     </footer>
   );
@@ -1802,3 +2099,103 @@ export function LoadSequence() {
     </motion.div>
   );
 }
+
+/* ---------- Scroll to Top with Progress ---------- */
+export function ScrollToTop() {
+  const { scrollYProgress } = useScroll();
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Apply the exact same spring physics as the top scrollbar for perfect sync
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 });
+
+  useEffect(() => {
+    return scrollYProgress.on("change", (latest) => {
+      setIsVisible(latest > 0.05);
+    });
+  }, [scrollYProgress]);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // SVG parameters
+  const radius = 15;
+  const strokeWidth = 2.5;
+  const circumference = 2 * Math.PI * radius;
+
+  // Map spring-interpolated progress (0 to 1) directly to strokeDashoffset (circumference to 0)
+  const strokeDashoffset = useTransform(smoothProgress, [0, 1], [circumference, 0]);
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <>
+          <style>{`
+            @keyframes black-shadow-pulse {
+              0% {
+                box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.25);
+              }
+              70% {
+                box-shadow: 0 0 0 8px rgba(0, 0, 0, 0);
+              }
+              100% {
+                box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+              }
+            }
+            .btn-black-pulse {
+              animation: black-shadow-pulse 2s infinite;
+            }
+          `}</style>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={scrollToTop}
+            className="btn-black-pulse fixed bottom-6 right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-white border border-border text-ink transition-colors cursor-pointer outline-none"
+            aria-label="Scroll to top"
+          >
+            {/* SVG Progress Circle wrapper */}
+            <div className="absolute inset-0 -rotate-90">
+              <svg className="h-full w-full" viewBox="0 0 40 40">
+                {/* Background track (grey) */}
+                <circle
+                  className="text-border"
+                  stroke="currentColor"
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  r={radius}
+                  cx="20"
+                  cy="20"
+                />
+                {/* Foreground progress track (black/ink) */}
+                <motion.circle
+                  className="text-ink"
+                  stroke="currentColor"
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  r={radius}
+                  cx="20"
+                  cy="20"
+                  style={{
+                    strokeDasharray: circumference,
+                    strokeDashoffset,
+                  }}
+                />
+              </svg>
+            </div>
+            
+            {/* Icon */}
+            <ArrowUp className="h-4 w-4 relative z-10" />
+          </motion.button>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
