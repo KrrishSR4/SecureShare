@@ -23,57 +23,18 @@ import {
   Testimonials,
   WordReveal,
 } from "@/components/secureshare";
-import { useLenis } from "@/lib/use-lenis";
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
 
 function Landing() {
-  useLenis();
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -80]);
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.3]);
 
   useEffect(() => {
-    // Parallax background blobs using GSAP
-    gsap.to(".blob-parallax", {
-      y: 250,
-      x: 100,
-      ease: "none",
-      scrollTrigger: {
-        trigger: "#top",
-        start: "top top",
-        end: "bottom top",
-        scrub: 1.5,
-      },
-    });
-
-    gsap.to(".blob-parallax-2", {
-      y: -350,
-      x: -150,
-      ease: "none",
-      scrollTrigger: {
-        trigger: "#top",
-        start: "top top",
-        end: "bottom top",
-        scrub: 2,
-      },
-    });
-
-    gsap.to(".blob-parallax-3", {
-      y: -200,
-      x: 80,
-      ease: "none",
-      scrollTrigger: {
-        trigger: "#top",
-        start: "top top",
-        end: "bottom top",
-        scrub: 1.2,
-      },
-    });
-
     // Staggered Page-Load Hero Timeline
     const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
 
@@ -127,7 +88,7 @@ function Landing() {
       <Nav />
 
       {/* ============ HERO ============ */}
-      <section ref={heroRef} className="relative overflow-hidden pt-20 md:pt-24 pb-12">
+      <section ref={heroRef} className="relative overflow-hidden pt-20 md:pt-24 pb-0">
         <motion.div style={{ y: heroY, opacity: heroOpacity }} className="mx-auto max-w-[1400px] px-6 md:px-10">
           <div className="grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center">
             {/* Left Column (Text & CTAs) */}
@@ -186,7 +147,7 @@ function Landing() {
           </div>
         </motion.div>
 
-        <div className="mt-12">
+        <div className="mt-12 mb-[-16px] md:mb-[-28px]">
           <ComplianceMarquee />
         </div>
       </section>
@@ -260,9 +221,8 @@ function Landing() {
         <Testimonials />
       </Section>
 
-      {/* ============ FINAL CTA ============ */}
       <section className="relative overflow-hidden border-t border-border">
-        <div className="mx-auto max-w-[1400px] px-6 py-20 md:px-10 md:py-32">
+        <div className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-16">
           <Reveal>
             <div className="eyebrow flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-signal" />

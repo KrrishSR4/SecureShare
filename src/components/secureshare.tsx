@@ -54,11 +54,6 @@ export function Reveal({
           duration: 0.8,
           delay,
           ease: "power3.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 90%",
-            toggleActions: "play none none none",
-          },
         }
       );
     }, el);
@@ -93,11 +88,6 @@ export function WordReveal({ text, className }: { text: string; className?: stri
           duration: 0.8,
           stagger: 0.03,
           ease: "power3.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 90%",
-            toggleActions: "play none none none",
-          },
         }
       );
     }, el);
@@ -1342,11 +1332,6 @@ function Counter({ to, suffix = "", prefix = "" }: { to: number; suffix?: string
       val: to,
       duration: 2,
       ease: "power2.out",
-      scrollTrigger: {
-        trigger: el,
-        start: "top 95%",
-        toggleActions: "play none none none",
-      },
       onUpdate: () => {
         el.innerText = `${prefix}${format(count.val)}${suffix}`;
       },
@@ -1487,9 +1472,9 @@ export function Section({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("relative mx-auto max-w-[1400px] px-6 py-14 md:px-10 md:py-24", className)}>
+    <section id={id} className={cn("relative mx-auto max-w-[1400px] px-6 py-8 md:px-10 md:py-14", className)}>
       {(eyebrow || title || intro) && (
-        <div className="mb-10 max-w-3xl">
+        <div className="mb-8 max-w-3xl">
           {eyebrow && (
             <Reveal>
               <div className="eyebrow flex items-center gap-2">
@@ -1500,14 +1485,14 @@ export function Section({
           )}
           {title && (
             <Reveal delay={0.05}>
-              <h2 className="mt-5 font-display text-5xl leading-[1.02] text-balance md:text-7xl">
+              <h2 className="mt-3.5 font-display text-5xl leading-[1.02] text-balance md:text-7xl">
                 {title}
               </h2>
             </Reveal>
           )}
           {intro && (
             <Reveal delay={0.1}>
-              <p className="mt-6 max-w-2xl text-lg text-muted-foreground text-balance">{intro}</p>
+              <p className="mt-4 max-w-2xl text-lg text-muted-foreground text-balance">{intro}</p>
             </Reveal>
           )}
         </div>
