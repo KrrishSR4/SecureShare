@@ -39,12 +39,12 @@ function ShareDownloadPage() {
   const { shareId } = Route.useParams();
   const [loading, setLoading] = useState(true);
   const [shareData, setShareData] = useState<SharePayload | null>(null);
-  
+
   // Password Verification State
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
-  
+
   // Decryption & Download Animation State
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionStep, setDecryptionStep] = useState(0);
@@ -93,6 +93,7 @@ function ShareDownloadPage() {
         }
         setLoading(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareId]);
 
   const getFileIcon = (fileName: string) => {
@@ -141,7 +142,7 @@ function ShareDownloadPage() {
         return res.json();
       })
       .then((data) => {
-        setShareData((prev) => prev ? { ...prev, content: data.content } : null);
+        setShareData((prev) => (prev ? { ...prev, content: data.content } : null));
         setIsVerified(true);
         setPasswordError(false);
       })
@@ -163,29 +164,51 @@ function ShareDownloadPage() {
     setIsDecrypting(true);
     setDecryptionStep(0);
 
-    // Cryptographic steps visualization
-    setTimeout(() => setDecryptionStep(1), 500); // Verify wrap parameters
-    setTimeout(() => setDecryptionStep(2), 1200); // Reconstruct AES block keys
-    setTimeout(() => setDecryptionStep(3), 2000); // Decrypt payload buffer
-    setTimeout(() => {
-      setIsDecrypting(false);
-      setDownloadSuccess(true);
+    const fetchContentPromise = !shareData.content
+      ? fetch(`${API_BASE_URL}/api/shares/${shareId}/download`, { method: "POST" })
+          .then((res) => {
+            if (!res.ok) throw new Error("Could not download file content");
+            return res.json();
+          })
+          .then((data) => {
+            setShareData((prev) => (prev ? { ...prev, content: data.content } : null));
+            return data.content;
+          })
+      : Promise.resolve(shareData.content);
 
-      // Trigger actual browser download
-      const link = document.createElement("a");
-      link.href = shareData.content;
-      link.download = shareData.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    fetchContentPromise
+      .then((fileContent) => {
+        // Cryptographic steps visualization
+        setTimeout(() => setDecryptionStep(1), 500); // Verify wrap parameters
+        setTimeout(() => setDecryptionStep(2), 1200); // Reconstruct AES block keys
+        setTimeout(() => setDecryptionStep(3), 2000); // Decrypt payload buffer
+        setTimeout(() => {
+          setIsDecrypting(false);
+          setDownloadSuccess(true);
 
-      // Handle One-Time Download Shredding
-      if (shareData.oneTimeDownload) {
-        localStorage.removeItem(`ss_share_${shareId}`);
-        // Log that this is shredded locally
-        console.log(`Payload for shareId ${shareId} shredded immediately after single retrieval.`);
-      }
-    }, 2800);
+          // Trigger actual browser download
+          const link = document.createElement("a");
+          link.href = fileContent;
+          link.download = shareData.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Handle One-Time Download Shredding
+          if (shareData.oneTimeDownload) {
+            localStorage.removeItem(`ss_share_${shareId}`);
+            // Log that this is shredded locally
+            console.log(
+              `Payload for shareId ${shareId} shredded immediately after single retrieval.`,
+            );
+          }
+        }, 2800);
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsDecrypting(false);
+        alert("Download failed. The file may have already been shredded or expired.");
+      });
   };
 
   if (loading) {
@@ -203,11 +226,17 @@ function ShareDownloadPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border/80 bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6 md:px-10">
-          <Link to="/" className="flex items-center gap-2 font-display text-xl font-bold tracking-tight">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-display text-xl font-bold tracking-tight"
+          >
             <LogoMark />
             <span>SecureShare</span>
           </Link>
-          <Link to="/" className="text-xs font-semibold text-muted-foreground transition-colors hover:text-ink flex items-center gap-1.5">
+          <Link
+            to="/"
+            className="text-xs font-semibold text-muted-foreground transition-colors hover:text-ink flex items-center gap-1.5"
+          >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to Home
           </Link>
         </div>
@@ -231,8 +260,9 @@ function ShareDownloadPage() {
                 </div>
                 <h2 className="text-lg font-semibold text-ink">Secure Share Expired</h2>
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  This share link does not exist, has expired, or was already retrieved and shredded.
-                  SecureShare zero-knowledge payloads are permanently deleted from host records after expiration or single-use retrieval.
+                  This share link does not exist, has expired, or was already retrieved and
+                  shredded. SecureShare zero-knowledge payloads are permanently deleted from host
+                  records after expiration or single-use retrieval.
                 </p>
                 <div className="mt-8">
                   <Link
@@ -268,11 +298,17 @@ function ShareDownloadPage() {
                       ) : (
                         <div className="h-3.5 w-3.5 rounded-full border border-dashed border-border" />
                       )}
-                      <span className={decryptionStep >= 1 ? "text-ink font-semibold" : "text-muted-foreground"}>
+                      <span
+                        className={
+                          decryptionStep >= 1 ? "text-ink font-semibold" : "text-muted-foreground"
+                        }
+                      >
                         1. Verify key wrapper signature
                       </span>
                     </div>
-                    <span className="text-muted-foreground">{decryptionStep >= 1 ? "Success" : "Pending"}</span>
+                    <span className="text-muted-foreground">
+                      {decryptionStep >= 1 ? "Success" : "Pending"}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between border-b border-border/40 pb-2">
@@ -282,11 +318,17 @@ function ShareDownloadPage() {
                       ) : (
                         <div className="h-3.5 w-3.5 rounded-full border border-dashed border-border" />
                       )}
-                      <span className={decryptionStep >= 2 ? "text-ink font-semibold" : "text-muted-foreground"}>
+                      <span
+                        className={
+                          decryptionStep >= 2 ? "text-ink font-semibold" : "text-muted-foreground"
+                        }
+                      >
                         2. Unwrap client AES-256 GCM key
                       </span>
                     </div>
-                    <span className="text-muted-foreground">{decryptionStep >= 2 ? "Success" : "Pending"}</span>
+                    <span className="text-muted-foreground">
+                      {decryptionStep >= 2 ? "Success" : "Pending"}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between pb-2">
@@ -296,11 +338,17 @@ function ShareDownloadPage() {
                       ) : (
                         <div className="h-3.5 w-3.5 rounded-full border border-dashed border-border" />
                       )}
-                      <span className={decryptionStep >= 3 ? "text-ink font-semibold" : "text-muted-foreground"}>
+                      <span
+                        className={
+                          decryptionStep >= 3 ? "text-ink font-semibold" : "text-muted-foreground"
+                        }
+                      >
                         3. Decrypt ciphertext payload
                       </span>
                     </div>
-                    <span className="text-muted-foreground">{decryptionStep >= 3 ? "Success" : "Pending"}</span>
+                    <span className="text-muted-foreground">
+                      {decryptionStep >= 3 ? "Success" : "Pending"}
+                    </span>
                   </div>
                 </div>
               </motion.div>
@@ -323,7 +371,8 @@ function ShareDownloadPage() {
                   <div className="mt-4 rounded-xl border border-red-500/10 bg-red-500/[0.02] p-3 text-red-500/90 text-[10px] leading-normal flex items-start gap-2 text-left">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
-                      <strong>One-time download:</strong> Decryption wrap metadata has been shredded from SecureShare records. This link is now dead.
+                      <strong>One-time download:</strong> Decryption wrap metadata has been shredded
+                      from SecureShare records. This link is now dead.
                     </span>
                   </div>
                 )}
@@ -348,9 +397,12 @@ function ShareDownloadPage() {
                 <div className="rounded-full bg-mist p-3.5 w-fit mx-auto mb-5 text-muted-foreground border border-border">
                   <Lock className="h-6 w-6" />
                 </div>
-                <h2 className="text-lg font-semibold text-ink text-center">Decryption Key Required</h2>
+                <h2 className="text-lg font-semibold text-ink text-center">
+                  Decryption Key Required
+                </h2>
                 <p className="text-xs text-muted-foreground mt-2 text-center leading-relaxed">
-                  This share payload requires a client-side decryption key. Enter the password to initialize unwrap sequence.
+                  This share payload requires a client-side decryption key. Enter the password to
+                  initialize unwrap sequence.
                 </p>
 
                 <div className="mt-6 space-y-4 text-xs">
@@ -389,8 +441,11 @@ function ShareDownloadPage() {
                 <div className="rounded-2xl border border-border bg-mist/35 p-6 w-fit mx-auto mb-5 text-muted-foreground border-dashed flex items-center justify-center">
                   <FileIcon className="h-10 w-10 text-ink" strokeWidth={1.5} />
                 </div>
-                
-                <h2 className="text-lg font-semibold text-ink truncate max-w-full px-2" title={shareData.name}>
+
+                <h2
+                  className="text-lg font-semibold text-ink truncate max-w-full px-2"
+                  title={shareData.name}
+                >
                   {shareData.name}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5 font-mono">
@@ -401,7 +456,8 @@ function ShareDownloadPage() {
                   <ShieldCheck className="h-4.5 w-4.5 text-signal shrink-0 mt-0.5" />
                   <div>
                     <span className="font-semibold text-ink block">Zero-Knowledge Decryption</span>
-                    Payload verified under local Browser sandboxing. Files are reconstructed entirely on-device.
+                    Payload verified under local Browser sandboxing. Files are reconstructed
+                    entirely on-device.
                   </div>
                 </div>
 

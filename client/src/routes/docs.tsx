@@ -43,7 +43,7 @@ interface DocSection {
   id: string;
   category: string;
   title: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   content: React.ReactNode;
   code?: CodeSnippet;
 }
@@ -79,9 +79,39 @@ function DocsPage() {
   };
 
   const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2000);
+        })
+        .catch(() => {
+          fallbackCopyText(text, id);
+        });
+    } else {
+      fallbackCopyText(text, id);
+    }
+  };
+
+  const fallbackCopyText = (text: string, id: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      if (document.execCommand("copy")) {
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+    } catch (err) {
+      console.warn("execCommand fallback failed", err);
+    }
+    document.body.removeChild(textArea);
   };
 
   const scrollToSection = (id: keyof typeof contentRefs) => {
@@ -121,6 +151,7 @@ function DocsPage() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sections: DocSection[] = [
@@ -133,19 +164,20 @@ function DocsPage() {
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
             Welcome to the <strong>SecureShare</strong> developer documentation. SecureShare is an
-            enterprise-grade, zero-knowledge privacy infrastructure that enables modern organizations
-            to share sensitive files, datasets, and credentials with external partners without risking
-            data leaks.
+            enterprise-grade, zero-knowledge privacy infrastructure that enables modern
+            organizations to share sensitive files, datasets, and credentials with external partners
+            without risking data leaks.
           </p>
           <p>
-            Unlike traditional file sharing platforms, SecureShare encrypts all payloads client-side,
-            meaning that data is encrypted in the browser or terminal before reaching our servers.
-            Neither SecureShare nor cloud hosts ever have access to the raw files or decryption keys.
+            Unlike traditional file sharing platforms, SecureShare encrypts all payloads
+            client-side, meaning that data is encrypted in the browser or terminal before reaching
+            our servers. Neither SecureShare nor cloud hosts ever have access to the raw files or
+            decryption keys.
           </p>
           <div className="rounded-xl border border-border bg-muted/20 p-4 text-xs">
-            <span className="font-semibold text-ink">Zero-Knowledge Guarantee:</span> We store cryptographically
-            wrapped keys and encrypted ciphertext blocks. Decryption is performed entirely in authorized client
-            environments using keys derived or kept client-side.
+            <span className="font-semibold text-ink">Zero-Knowledge Guarantee:</span> We store
+            cryptographically wrapped keys and encrypted ciphertext blocks. Decryption is performed
+            entirely in authorized client environments using keys derived or kept client-side.
           </div>
         </div>
       ),
@@ -158,19 +190,16 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Get up and running with SecureShare in less than five minutes. To begin programmatically,
-            you will install the client-side binary or SDK, login, and upload your first file.
+            Get up and running with SecureShare in less than five minutes. To begin
+            programmatically, you will install the client-side binary or SDK, login, and upload your
+            first file.
           </p>
           <ol className="list-decimal pl-5 space-y-2">
             <li>
               Create a developer account in the SecureShare console and obtain your API token.
             </li>
-            <li>
-              Install the appropriate library or CLI tool for your stack.
-            </li>
-            <li>
-              Initialize the client with your credentials to encrypt and share datasets.
-            </li>
+            <li>Install the appropriate library or CLI tool for your stack.</li>
+            <li>Initialize the client with your credentials to encrypt and share datasets.</li>
           </ol>
         </div>
       ),
@@ -189,10 +218,22 @@ function DocsPage() {
         <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
           <p>SecureShare is built from the ground up for high-trust environments:</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Client-Side Hybrid Encryption:</strong> Auto-generates local key material for file chunks.</li>
-            <li><strong>Dynamic Compliance Guardrails:</strong> Automatically checks data structures for GDPR, HIPAA, and custom PII constraints before uploading.</li>
-            <li><strong>Access Expiry Controls:</strong> Revoke access automatically based on date, view limit, or geolocation.</li>
-            <li><strong>Immutable Cryptographic Audit Trails:</strong> Cryptographically signs access actions to create tamper-proof logs.</li>
+            <li>
+              <strong>Client-Side Hybrid Encryption:</strong> Auto-generates local key material for
+              file chunks.
+            </li>
+            <li>
+              <strong>Dynamic Compliance Guardrails:</strong> Automatically checks data structures
+              for GDPR, HIPAA, and custom PII constraints before uploading.
+            </li>
+            <li>
+              <strong>Access Expiry Controls:</strong> Revoke access automatically based on date,
+              view limit, or geolocation.
+            </li>
+            <li>
+              <strong>Immutable Cryptographic Audit Trails:</strong> Cryptographically signs access
+              actions to create tamper-proof logs.
+            </li>
           </ul>
         </div>
       ),
@@ -205,15 +246,16 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Every API request to the SecureShare platform requires a secure bearer token. Tokens are generated
-            in the SecureShare Console with granular read/write and scope permissions.
+            Every API request to the SecureShare platform requires a secure bearer token. Tokens are
+            generated in the SecureShare Console with granular read/write and scope permissions.
           </p>
           <div className="rounded-xl border border-border bg-muted/20 p-4 text-xs font-mono">
             Authorization: Bearer sec_live_8f8a12bc...
           </div>
           <p>
-            Keep your API keys confidential. Do not expose them in client-side code that is shipped to public
-            browsers. Use our server-side wrappers or ephemeral browser-session keys instead.
+            Keep your API keys confidential. Do not expose them in client-side code that is shipped
+            to public browsers. Use our server-side wrappers or ephemeral browser-session keys
+            instead.
           </p>
         </div>
       ),
@@ -231,13 +273,15 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Files shared via SecureShare are split into chunks, encrypted locally, and streamed directly
-            to object storage. A share link is then generated containing the metadata required for decryption.
+            Files shared via SecureShare are split into chunks, encrypted locally, and streamed
+            directly to object storage. A share link is then generated containing the metadata
+            required for decryption.
           </p>
           <p>
-            The decryption key is appended in the URL hash fragment (e.g., <code className="text-xs bg-muted px-1 rounded">#key=...</code>).
-            Since hash fragments are never sent to the hosting server during HTTP requests, the key remains
-            strictly in the recipient's browser.
+            The decryption key is appended in the URL hash fragment (e.g.,{" "}
+            <code className="text-xs bg-muted px-1 rounded">#key=...</code>). Since hash fragments
+            are never sent to the hosting server during HTTP requests, the key remains strictly in
+            the recipient's browser.
           </p>
         </div>
       ),
@@ -255,12 +299,13 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Before encryption occurs, the SecureShare policy engine scans the file contents for PII, PHI,
-            or regulatory markers.
+            Before encryption occurs, the SecureShare policy engine scans the file contents for PII,
+            PHI, or regulatory markers.
           </p>
           <p>
-            If sensitive keys or violations (e.g. unhashed social security numbers, medical record details) are found,
-            the upload will block, notify the developer, or request an explicit compliance override based on workspace configurations.
+            If sensitive keys or violations (e.g. unhashed social security numbers, medical record
+            details) are found, the upload will block, notify the developer, or request an explicit
+            compliance override based on workspace configurations.
           </p>
         </div>
       ),
@@ -272,17 +317,25 @@ function DocsPage() {
       icon: Key,
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>
-            Our cryptographic envelope utilizes standard, proven primitives:
-          </p>
+          <p>Our cryptographic envelope utilizes standard, proven primitives:</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Symmetric Cipher:</strong> AES-256-GCM for file payload encryption. Each file has a unique key.</li>
-            <li><strong>Asymmetric Wrapping:</strong> RSA-OAEP 4096-bit or Elliptic Curve secp256k1 keys wrap the symmetric key.</li>
-            <li><strong>Derivation function:</strong> PBKDF2 with SHA-256 is used if password protection is enabled.</li>
+            <li>
+              <strong>Symmetric Cipher:</strong> AES-256-GCM for file payload encryption. Each file
+              has a unique key.
+            </li>
+            <li>
+              <strong>Asymmetric Wrapping:</strong> RSA-OAEP 4096-bit or Elliptic Curve secp256k1
+              keys wrap the symmetric key.
+            </li>
+            <li>
+              <strong>Derivation function:</strong> PBKDF2 with SHA-256 is used if password
+              protection is enabled.
+            </li>
           </ul>
           <p>
-            Cryptographic signatures ensure that files cannot be tampered with in-flight. If a single byte of ciphertext
-            is modified on the storage tier, decryption will fail validation.
+            Cryptographic signatures ensure that files cannot be tampered with in-flight. If a
+            single byte of ciphertext is modified on the storage tier, decryption will fail
+            validation.
           </p>
         </div>
       ),
@@ -294,13 +347,20 @@ function DocsPage() {
       icon: ShieldCheck,
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>
-            Define precisely who can access shared assets. SecureShare supports:
-          </p>
+          <p>Define precisely who can access shared assets. SecureShare supports:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong>Email verification:</strong> Requires verification pins sent to recipient domains.</li>
-            <li><strong>IP/Geo-fencing:</strong> Restricts downloads to corporate network blocks or specific countries.</li>
-            <li><strong>MFA Enforcement:</strong> Forces downloading users to authenticate with WebAuthn or SMS pins.</li>
+            <li>
+              <strong>Email verification:</strong> Requires verification pins sent to recipient
+              domains.
+            </li>
+            <li>
+              <strong>IP/Geo-fencing:</strong> Restricts downloads to corporate network blocks or
+              specific countries.
+            </li>
+            <li>
+              <strong>MFA Enforcement:</strong> Forces downloading users to authenticate with
+              WebAuthn or SMS pins.
+            </li>
           </ul>
         </div>
       ),
@@ -313,12 +373,13 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Secure links are dynamic redirect pathways. Instead of pointing to raw storage targets, links point to a
-            SecureShare verification router that validates expiration criteria, download counters, and policy rules.
+            Secure links are dynamic redirect pathways. Instead of pointing to raw storage targets,
+            links point to a SecureShare verification router that validates expiration criteria,
+            download counters, and policy rules.
           </p>
           <p>
-            If a link is set to "one-time download", the token representing the keywrap mapping is deleted
-            from the database immediately upon the first byte stream request.
+            If a link is set to "one-time download", the token representing the keywrap mapping is
+            deleted from the database immediately upon the first byte stream request.
           </p>
         </div>
       ),
@@ -331,12 +392,12 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            All access actions (link creation, download, failed validation, revocation) generate signed events
-            stored in the SecureShare audit ledger.
+            All access actions (link creation, download, failed validation, revocation) generate
+            signed events stored in the SecureShare audit ledger.
           </p>
           <p>
-            These logs can be integrated directly with SIEM providers (like Splunk, Datadog) using webhooks, ensuring that
-            compliance monitors have real-time tracking of files.
+            These logs can be integrated directly with SIEM providers (like Splunk, Datadog) using
+            webhooks, ensuring that compliance monitors have real-time tracking of files.
           </p>
         </div>
       ),
@@ -349,12 +410,13 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            By default, encrypted blobs are stored in our secure, globally distributed Cloudflare R2 storage containers.
-            For enterprise clients, we support **BYOS (Bring Your Own Storage)**.
+            By default, encrypted blobs are stored in our secure, globally distributed Cloudflare R2
+            storage containers. For enterprise clients, we support **BYOS (Bring Your Own
+            Storage)**.
           </p>
           <p>
-            You can configure your workspace to route encrypted ciphertext directly to your AWS S3, Google Cloud Storage,
-            or Azure Blob Storage instances.
+            You can configure your workspace to route encrypted ciphertext directly to your AWS S3,
+            Google Cloud Storage, or Azure Blob Storage instances.
           </p>
         </div>
       ),
@@ -367,7 +429,8 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Interact directly with the SecureShare REST engine. All responses return JSON formatting.
+            Interact directly with the SecureShare REST engine. All responses return JSON
+            formatting.
           </p>
           <div className="space-y-2">
             <h5 className="font-semibold text-ink">Endpoints:</h5>
@@ -402,10 +465,12 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            We maintain native wrappers for multiple languages to simplify WebCrypto calculations and chunk-upload mechanics.
+            We maintain native wrappers for multiple languages to simplify WebCrypto calculations
+            and chunk-upload mechanics.
           </p>
           <p>
-            Check out the official GitHub repositories to download release builds, review tests, and submit pull requests.
+            Check out the official GitHub repositories to download release builds, review tests, and
+            submit pull requests.
           </p>
         </div>
       ),
@@ -423,8 +488,8 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Receive HTTP POST notifications when events occur in your account. Webhook payloads are signed
-            with a shared secret so you can verify they originated from SecureShare.
+            Receive HTTP POST notifications when events occur in your account. Webhook payloads are
+            signed with a shared secret so you can verify they originated from SecureShare.
           </p>
           <p>
             Supported events: <code className="text-xs bg-muted px-1 rounded">share.created</code>,
@@ -447,11 +512,9 @@ function DocsPage() {
       icon: Layers,
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>
-            SecureShare is designed to segment storage and key handling.
-          </p>
+          <p>SecureShare is designed to segment storage and key handling.</p>
           <pre className="p-4 rounded-xl bg-muted/30 border border-border text-[10px] leading-relaxed font-mono overflow-x-auto text-ink">
-{`+-----------------+       Encrypts File & Wraps Key       +--------------------+
+            {`+-----------------+       Encrypts File & Wraps Key       +--------------------+
 |  Client Browser | ------------------------------------> | Cloudflare R2 / S3 |
 |  or CLI Session |                                       |  (Ciphertext Blob) |
 +-----------------+                                       +--------------------+
@@ -463,8 +526,9 @@ function DocsPage() {
 +-----------------+`}
           </pre>
           <p>
-            By storing wrapped keys in the SecureShare metadata database and the actual file ciphertext in object storage,
-            compromise of a single layer does not expose any user files.
+            By storing wrapped keys in the SecureShare metadata database and the actual file
+            ciphertext in object storage, compromise of a single layer does not expose any user
+            files.
           </p>
         </div>
       ),
@@ -477,12 +541,13 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            Our cryptographic models undergo continuous third-party penetration testing. SecureShare is SOC 2 Type II
-            certified, and our zero-knowledge models are HIPAA, GDPR, and ISO 27001 compliant.
+            Our cryptographic models undergo continuous third-party penetration testing. SecureShare
+            is SOC 2 Type II certified, and our zero-knowledge models are HIPAA, GDPR, and ISO 27001
+            compliant.
           </p>
           <p>
-            We run an active Bug Bounty program on Bugcrowd. If you discover a cryptographic vulnerability, please
-            submit a report to receive a bounty reward.
+            We run an active Bug Bounty program on Bugcrowd. If you discover a cryptographic
+            vulnerability, please submit a report to receive a bounty reward.
           </p>
         </div>
       ),
@@ -495,11 +560,13 @@ function DocsPage() {
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
           <p>
-            SecureShare can be self-hosted inside your private cloud using Docker. Self-hosting ensures that even
-            the metadata ledger, audit logs, and keys are stored on physical servers you own.
+            SecureShare can be self-hosted inside your private cloud using Docker. Self-hosting
+            ensures that even the metadata ledger, audit logs, and keys are stored on physical
+            servers you own.
           </p>
           <p>
-            Modify the environment variables in your compose stack to bind your database and cloud bucket targets.
+            Modify the environment variables in your compose stack to bind your database and cloud
+            bucket targets.
           </p>
         </div>
       ),
@@ -519,13 +586,17 @@ function DocsPage() {
           <div>
             <h5 className="font-semibold text-ink">What is the maximum file size I can share?</h5>
             <p className="mt-1 text-xs">
-              SecureShare supports files up to 50 GB. Larger files are partitioned into 10 MB chunks and encrypted concurrently.
+              SecureShare supports files up to 50 GB. Larger files are partitioned into 10 MB chunks
+              and encrypted concurrently.
             </p>
           </div>
           <div>
-            <h5 className="font-semibold text-ink">What happens if I lose my master encryption passphrase?</h5>
+            <h5 className="font-semibold text-ink">
+              What happens if I lose my master encryption passphrase?
+            </h5>
             <p className="mt-1 text-xs">
-              Due to zero-knowledge constraints, SecureShare cannot recover files if your private keys are lost. Please backup keys in HSM or secure keyvault managers.
+              Due to zero-knowledge constraints, SecureShare cannot recover files if your private
+              keys are lost. Please backup keys in HSM or secure keyvault managers.
             </p>
           </div>
         </div>
@@ -538,11 +609,22 @@ function DocsPage() {
       icon: TrendingUp,
       content: (
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
-          <p>Our upcoming product development releases focus on expanding compliance configurations:</p>
+          <p>
+            Our upcoming product development releases focus on expanding compliance configurations:
+          </p>
           <ul className="list-disc pl-5 space-y-2 text-xs">
-            <li><strong>Q3 2026:</strong> Decentralized multi-sig key agreements for high-value operations.</li>
-            <li><strong>Q4 2026:</strong> Fully homomorphic query support over encrypted index structures.</li>
-            <li><strong>Q1 2027:</strong> Hardware Security Module (HSM) direct integrations (Yubikey, Nitrokey).</li>
+            <li>
+              <strong>Q3 2026:</strong> Decentralized multi-sig key agreements for high-value
+              operations.
+            </li>
+            <li>
+              <strong>Q4 2026:</strong> Fully homomorphic query support over encrypted index
+              structures.
+            </li>
+            <li>
+              <strong>Q1 2027:</strong> Hardware Security Module (HSM) direct integrations (Yubikey,
+              Nitrokey).
+            </li>
           </ul>
         </div>
       ),
@@ -556,11 +638,17 @@ function DocsPage() {
         <div className="space-y-4 text-sm text-muted-foreground leading-relaxed font-sans">
           <div>
             <h5 className="font-semibold text-ink">v1.1.0 (July 2026)</h5>
-            <p className="text-xs text-muted-foreground">Introduced client-side chunk parallelization. Performance upload speed increased by 3.2x.</p>
+            <p className="text-xs text-muted-foreground">
+              Introduced client-side chunk parallelization. Performance upload speed increased by
+              3.2x.
+            </p>
           </div>
           <div>
             <h5 className="font-semibold text-ink">v1.0.0 (June 2026)</h5>
-            <p className="text-xs text-muted-foreground">Initial stable release. Full WebCrypto integration, dashboard panel, and PostgreSQL prisma backing.</p>
+            <p className="text-xs text-muted-foreground">
+              Initial stable release. Full WebCrypto integration, dashboard panel, and PostgreSQL
+              prisma backing.
+            </p>
           </div>
         </div>
       ),
@@ -677,7 +765,9 @@ function DocsPage() {
                 </div>
               ))}
               {Object.keys(filteredCategories).length === 0 && (
-                <p className="text-center text-xs text-muted-foreground py-4">No documentation matches your search.</p>
+                <p className="text-center text-xs text-muted-foreground py-4">
+                  No documentation matches your search.
+                </p>
               )}
             </nav>
           </aside>

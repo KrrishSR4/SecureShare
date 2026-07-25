@@ -188,13 +188,13 @@ export function MagneticButton({
   to?: string;
   onClick?: () => void;
 }) {
-  const ref = useRef<any>(null);
+  const ref = useRef<HTMLElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const sx = useSpring(x, { stiffness: 220, damping: 18, mass: 0.5 });
   const sy = useSpring(y, { stiffness: 220, damping: 18, mass: 0.5 });
 
-  const onMove = (e: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
+  const onMove = (e: MouseEvent<HTMLAnchorElement | HTMLButtonElement | HTMLElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -216,9 +216,9 @@ export function MagneticButton({
   if (to) {
     return (
       <MotionLink
-        ref={ref}
+        ref={ref as unknown as React.Ref<HTMLAnchorElement>}
         to={to}
-        onMouseMove={onMove}
+        onMouseMove={onMove as unknown as React.MouseEventHandler<HTMLAnchorElement>}
         onMouseLeave={onLeave}
         style={{ x: sx, y: sy }}
         className={cn(base, styles, className)}
@@ -231,9 +231,9 @@ export function MagneticButton({
   if (href) {
     return (
       <motion.a
-        ref={ref}
+        ref={ref as unknown as React.Ref<HTMLAnchorElement>}
         href={href}
-        onMouseMove={onMove}
+        onMouseMove={onMove as unknown as React.MouseEventHandler<HTMLAnchorElement>}
         onMouseLeave={onLeave}
         style={{ x: sx, y: sy }}
         className={cn(base, styles, className)}
@@ -245,9 +245,9 @@ export function MagneticButton({
 
   return (
     <motion.button
-      ref={ref}
+      ref={ref as unknown as React.Ref<HTMLButtonElement>}
       onClick={onClick}
-      onMouseMove={onMove as any}
+      onMouseMove={onMove as unknown as React.MouseEventHandler<HTMLButtonElement>}
       onMouseLeave={onLeave}
       style={{ x: sx, y: sy }}
       className={cn(base, styles, className)}
@@ -591,15 +591,19 @@ export function HeroVisualization() {
           duration: 0.55,
           ease: "power2.inOut",
         })
-        .to("#dot-left", {
-          motionPath: {
-            path: ".flow-path-left",
-            align: ".flow-path-left",
-            alignOrigin: [0.5, 0.5],
+        .to(
+          "#dot-left",
+          {
+            motionPath: {
+              path: ".flow-path-left",
+              align: ".flow-path-left",
+              alignOrigin: [0.5, 0.5],
+            },
+            duration: 0.55,
+            ease: "power2.inOut",
           },
-          duration: 0.55,
-          ease: "power2.inOut",
-        }, "<")
+          "<",
+        )
         .set("#dot-left", { opacity: 0 })
 
         // 4. Lock snaps closed & displays encrypted binary blocks
@@ -658,15 +662,19 @@ export function HeroVisualization() {
           duration: 0.55,
           ease: "power2.inOut",
         })
-        .to("#dot-right", {
-          motionPath: {
-            path: ".flow-path-right",
-            align: ".flow-path-right",
-            alignOrigin: [0.5, 0.5],
+        .to(
+          "#dot-right",
+          {
+            motionPath: {
+              path: ".flow-path-right",
+              align: ".flow-path-right",
+              alignOrigin: [0.5, 0.5],
+            },
+            duration: 0.55,
+            ease: "power2.inOut",
           },
-          duration: 0.55,
-          ease: "power2.inOut",
-        }, "<")
+          "<",
+        )
         .set("#dot-right", { opacity: 0 })
 
         // 7. Secure Share Link is generated
@@ -1762,7 +1770,9 @@ export function DocsPreview() {
                   {c.tag}
                 </span>
                 <h3 className="mt-2 text-xl font-medium tracking-tight">{c.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                  {c.description}
+                </p>
               </div>
               <div className="mt-8 flex items-center text-xs font-semibold text-ink">
                 Read documentation
@@ -1872,7 +1882,7 @@ export function Footer() {
   const onMouseEnter = () => {
     const grad = gradRef.current;
     if (!grad) return;
-    
+
     // Scale up the gradient spotlight radius smoothly on hover
     gsap.to(grad, {
       attr: { r: 250 },
@@ -1885,7 +1895,7 @@ export function Footer() {
     const grad = gradRef.current;
     const svg = svgRef.current;
     if (!grad || !svg) return;
-    
+
     // Collapse the spotlight radius and return light position to center on exit
     gsap.to(grad, {
       attr: { cx: 500, cy: 75, fx: 500, fy: 75, r: 0 },
@@ -1924,14 +1934,14 @@ export function Footer() {
 
     for (let i = 0; i < particleCount; i++) {
       const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      
+
       circle.setAttribute("cx", `${x}`);
       circle.setAttribute("cy", `${y}`);
       circle.setAttribute("r", `${Math.random() * 3 + 1.5}`);
       circle.setAttribute("fill", colors[Math.floor(Math.random() * colors.length)]);
       circle.setAttribute("opacity", "0.95");
       circle.setAttribute("style", "pointer-events: none;");
-      
+
       svg.appendChild(circle);
 
       const angle = Math.random() * Math.PI * 2;
@@ -1965,7 +1975,7 @@ export function Footer() {
     const rect = svg.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 1000;
     const y = ((e.clientY - rect.top) / rect.height) * 150;
-    
+
     // 1. Compress layout on click for high-fidelity mechanical click feel
     gsap.to(svg, {
       transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(0.94, 0.94, 0.94)",
@@ -1998,7 +2008,7 @@ export function Footer() {
     const svg = svgRef.current;
     const grad = gradRef.current;
     if (!svg || !grad) return;
-    
+
     // 1. Spring-elastic rebound bounce
     gsap.to(svg, {
       transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1.02, 1.02, 1.02)",
@@ -2259,7 +2269,7 @@ export function ScrollToTop() {
                 />
               </svg>
             </div>
-            
+
             {/* Icon */}
             <ArrowUp className="h-4 w-4 relative z-10" />
           </motion.button>
@@ -2268,4 +2278,3 @@ export function ScrollToTop() {
     </AnimatePresence>
   );
 }
-

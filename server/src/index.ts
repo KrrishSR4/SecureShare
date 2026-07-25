@@ -284,30 +284,35 @@ app.get("/api/shares/:shareId", (req: Request, res: Response): any => {
     return res.status(404).json({ error: "Share expired or not found." });
   }
 
-  // If no password, we return content right away, and if oneTime, delete it
-  if (!payload.requirePassword) {
-    const responsePayload = {
-      ...payload,
-      requirePassword: false,
-    };
-
-    if (payload.oneTimeDownload) {
-      sharedFilesMap.delete(shareId);
-      console.log(`Shredded one-time file ${shareId} on retrieval.`);
-    }
-
-    return res.json(responsePayload);
-  }
-
-  // If password required, do NOT return content yet
   res.json({
     id: payload.id,
     name: payload.name,
     size: payload.size,
     type: payload.type,
-    requirePassword: true,
+    requirePassword: payload.requirePassword,
     oneTime: payload.oneTimeDownload,
   });
+});
+
+// Retrieve share content for files without password (download endpoint)
+app.post("/api/shares/:shareId/download", (req: Request, res: Response): any => {
+  const { shareId } = req.params as { shareId: string };
+  const payload = sharedFilesMap.get(shareId);
+
+  if (!payload) {
+    return res.status(404).json({ error: "Share expired or not found." });
+  }
+
+  const responsePayload = {
+    content: payload.content,
+  };
+
+  if (payload.oneTimeDownload) {
+    sharedFilesMap.delete(shareId);
+    console.log(`Shredded one-time file ${shareId} on download.`);
+  }
+
+  res.json(responsePayload);
 });
 
 // Decrypt / Retrieve share content with password verification

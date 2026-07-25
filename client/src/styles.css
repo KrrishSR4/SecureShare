@@ -163,39 +163,60 @@
 }
 
 @keyframes marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 @utility animate-marquee {
   animation: marquee 40s linear infinite;
 }
 
 @keyframes floaty {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 @utility animate-floaty {
   animation: floaty 6s ease-in-out infinite;
 }
 
 @keyframes pulse-ring {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 @utility animate-pulse-ring {
   animation: pulse-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 @keyframes dash {
-  to { stroke-dashoffset: -20; }
+  to {
+    stroke-dashoffset: -20;
+  }
 }
 @utility animate-dash {
   animation: dash 1.6s linear infinite;
 }
 
 @keyframes laser-pulse {
-  from { stroke-dashoffset: 130; }
-  to { stroke-dashoffset: -130; }
+  from {
+    stroke-dashoffset: 130;
+  }
+  to {
+    stroke-dashoffset: -130;
+  }
 }
 @utility animate-laser-pulse {
   animation: laser-pulse 4s linear infinite;

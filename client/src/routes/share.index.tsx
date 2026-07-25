@@ -108,7 +108,9 @@ const getIconComponent = (iconName?: string) => {
 
 function WorkspacePage() {
   // STATE MANAGEMENT
-  const [activeTab, setActiveTab] = useState<"workspace" | "shared" | "activity" | "trash" | "settings">("workspace");
+  const [activeTab, setActiveTab] = useState<
+    "workspace" | "shared" | "activity" | "trash" | "settings"
+  >("workspace");
   const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [uploadingQueue, setUploadingQueue] = useState<WorkspaceFile[]>([]);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
@@ -147,7 +149,10 @@ function WorkspacePage() {
   const folderInputRef = useRef<HTMLInputElement>(null);
 
   // SELECTED FILE GETTER
-  const selectedFile = files.find((f) => f.id === selectedFileId) || trashFiles.find((f) => f.id === selectedFileId) || null;
+  const selectedFile =
+    files.find((f) => f.id === selectedFileId) ||
+    trashFiles.find((f) => f.id === selectedFileId) ||
+    null;
 
   // DATA LOADERS & PERSISTENCE
   const loadFromLocalFallback = () => {
@@ -161,17 +166,23 @@ function WorkspacePage() {
         const parsed = JSON.parse(savedFiles) as WorkspaceFile[];
         setFiles(parsed);
         if (parsed.length > 0 && !selectedFileId) setSelectedFileId(parsed[0].id);
-      } catch (_) {}
+      } catch (err) {
+        console.warn("Failed to parse local fallback files", err);
+      }
     }
     if (savedTrash) {
       try {
         setTrashFiles(JSON.parse(savedTrash));
-      } catch (_) {}
+      } catch (err) {
+        console.warn("Failed to parse local fallback trash", err);
+      }
     }
     if (savedActivities) {
       try {
         setActivities(JSON.parse(savedActivities));
-      } catch (_) {}
+      } catch (err) {
+        console.warn("Failed to parse local fallback activities", err);
+      }
     }
   };
 
@@ -184,7 +195,9 @@ function WorkspacePage() {
       .then((data) => {
         setFiles(data);
         if (data.length > 0) {
-          setSelectedFileId((prev) => prev && data.some((f: any) => f.id === prev) ? prev : data[0].id);
+          setSelectedFileId((prev) =>
+            prev && data.some((f: WorkspaceFile) => f.id === prev) ? prev : data[0].id,
+          );
         } else {
           setSelectedFileId(null);
         }
@@ -197,7 +210,9 @@ function WorkspacePage() {
         return res.json();
       })
       .then((data) => setTrashFiles(data))
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("Failed to fetch trash from server", err);
+      });
 
     fetch(`${API_BASE_URL}/api/activities`)
       .then((res) => {
@@ -205,7 +220,9 @@ function WorkspacePage() {
         return res.json();
       })
       .then((data) => setActivities(data))
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("Failed to fetch activities from server", err);
+      });
   };
 
   const saveFilesLocal = (newFiles: WorkspaceFile[]) => {
@@ -224,18 +241,15 @@ function WorkspacePage() {
   };
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/health`)
-      .then((res) => {
-        if (res.ok) {
-          setIsServerOnline(true);
-          refreshFromServer();
-        } else {
-          loadFromLocalFallback();
-        }
-      })
-      .catch(() => {
+    fetch(`${API_BASE_URL}/api/health`).then((res) => {
+      if (res.ok) {
+        setIsServerOnline(true);
+        refreshFromServer();
+      } else {
         loadFromLocalFallback();
-      });
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ICON SELECTOR BASED ON FILE EXTENSION
@@ -270,7 +284,12 @@ function WorkspacePage() {
   };
 
   // LOG ACTIVITY HELPER
-  const logActivity = (action: string, details: string, fileName?: string, icon: any = FileText) => {
+  const logActivity = (
+    action: string,
+    details: string,
+    fileName?: string,
+    icon: React.ComponentType<{ className?: string }> = FileText,
+  ) => {
     if (isServerOnline) {
       fetch(`${API_BASE_URL}/api/activities`, {
         method: "POST",
@@ -278,7 +297,9 @@ function WorkspacePage() {
         body: JSON.stringify({ action, details, target: fileName || "", iconName: "FileText" }),
       })
         .then(() => refreshFromServer())
-        .catch(() => {});
+        .catch((err) => {
+          console.warn("Failed to log activity to server", err);
+        });
     } else {
       const newEvent: ActivityEvent = {
         id: `act-${Math.random().toString(36).substring(2, 9)}`,
@@ -331,7 +352,8 @@ function WorkspacePage() {
       const ext = file.name.split(".").pop() || "bin";
       const baseName = file.name.substring(0, file.name.lastIndexOf("."));
       const sizeKB = file.size / 1024;
-      const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB.toFixed(0)} KB`;
+      const sizeStr =
+        sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB.toFixed(0)} KB`;
 
       const uploadId = `up-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -372,9 +394,14 @@ function WorkspacePage() {
         clearInterval(interval);
         if (isDestinedToFail) {
           setUploadingQueue((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, status: "failed", progress: 80 } : f))
+            prev.map((f) => (f.id === id ? { ...f, status: "failed", progress: 80 } : f)),
           );
-          logActivity("Upload Failed", `Failed to upload ${fileInfo.name}.${fileInfo.extension}`, `${fileInfo.name}.${fileInfo.extension}`, AlertCircle);
+          logActivity(
+            "Upload Failed",
+            `Failed to upload ${fileInfo.name}.${fileInfo.extension}`,
+            `${fileInfo.name}.${fileInfo.extension}`,
+            AlertCircle,
+          );
         } else {
           const completedFile: WorkspaceFile = {
             ...fileInfo,
@@ -406,19 +433,29 @@ function WorkspacePage() {
                 const updated = [completedFile, ...files];
                 saveFilesLocal(updated);
                 setSelectedFileId(completedFile.id);
-                logActivity("Uploaded File", `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`, `${completedFile.name}.${completedFile.extension}`, Upload);
+                logActivity(
+                  "Uploaded File",
+                  `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`,
+                  `${completedFile.name}.${completedFile.extension}`,
+                  Upload,
+                );
               });
           } else {
             setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
             const updated = [completedFile, ...files];
             saveFilesLocal(updated);
             setSelectedFileId(completedFile.id);
-            logActivity("Uploaded File", `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`, `${completedFile.name}.${completedFile.extension}`, Upload);
+            logActivity(
+              "Uploaded File",
+              `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`,
+              `${completedFile.name}.${completedFile.extension}`,
+              Upload,
+            );
           }
         }
       } else {
         setUploadingQueue((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress: Math.min(progress, 99) } : f))
+          prev.map((f) => (f.id === id ? { ...f, progress: Math.min(progress, 99) } : f)),
         );
       }
     }, 250);
@@ -431,7 +468,7 @@ function WorkspacePage() {
   const handleRetryUpload = (failedFile: WorkspaceFile) => {
     // Reset to uploading and restart progress
     setUploadingQueue((prev) =>
-      prev.map((f) => (f.id === failedFile.id ? { ...f, status: "uploading", progress: 0 } : f))
+      prev.map((f) => (f.id === failedFile.id ? { ...f, status: "uploading", progress: 0 } : f)),
     );
     simulateUploadProgress(failedFile.id, failedFile);
   };
@@ -448,13 +485,23 @@ function WorkspacePage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    logActivity("Downloaded File", `Downloaded raw decrypted data for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Download);
+    logActivity(
+      "Downloaded File",
+      `Downloaded raw decrypted data for ${file.name}.${file.extension}`,
+      `${file.name}.${file.extension}`,
+      Download,
+    );
   };
 
   const handlePreview = (file: WorkspaceFile) => {
     setPreviewTarget(file);
     setPreviewModalOpen(true);
-    logActivity("Previewed File", `Opened local preview viewport for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Eye);
+    logActivity(
+      "Previewed File",
+      `Opened local preview viewport for ${file.name}.${file.extension}`,
+      `${file.name}.${file.extension}`,
+      Eye,
+    );
   };
 
   const triggerRename = (file: WorkspaceFile) => {
@@ -479,16 +526,30 @@ function WorkspacePage() {
           setRenameTarget(null);
         })
         .catch(() => {
-          const updated = files.map((f) => (f.id === renameTarget.id ? { ...f, name: renameValue } : f));
+          const updated = files.map((f) =>
+            f.id === renameTarget.id ? { ...f, name: renameValue } : f,
+          );
           saveFilesLocal(updated);
-          logActivity("Renamed File", `Renamed file from ${renameTarget.name} to ${renameValue}`, `${renameValue}.${renameTarget.extension}`, Edit2);
+          logActivity(
+            "Renamed File",
+            `Renamed file from ${renameTarget.name} to ${renameValue}`,
+            `${renameValue}.${renameTarget.extension}`,
+            Edit2,
+          );
           setRenameModalOpen(false);
           setRenameTarget(null);
         });
     } else {
-      const updated = files.map((f) => (f.id === renameTarget.id ? { ...f, name: renameValue } : f));
+      const updated = files.map((f) =>
+        f.id === renameTarget.id ? { ...f, name: renameValue } : f,
+      );
       saveFilesLocal(updated);
-      logActivity("Renamed File", `Renamed file from ${renameTarget.name} to ${renameValue}`, `${renameValue}.${renameTarget.extension}`, Edit2);
+      logActivity(
+        "Renamed File",
+        `Renamed file from ${renameTarget.name} to ${renameValue}`,
+        `${renameValue}.${renameTarget.extension}`,
+        Edit2,
+      );
       setRenameModalOpen(false);
       setRenameTarget(null);
     }
@@ -509,7 +570,12 @@ function WorkspacePage() {
           const updatedTrash = [{ ...file, status: "completed" as const }, ...trashFiles];
           saveFilesLocal(updatedFiles);
           saveTrashLocal(updatedTrash);
-          logActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, Trash2);
+          logActivity(
+            "Deleted File",
+            `Moved ${file.name}.${file.extension} to trash bin`,
+            `${file.name}.${file.extension}`,
+            Trash2,
+          );
           if (selectedFileId === file.id) setSelectedFileId(null);
         });
     } else {
@@ -517,7 +583,12 @@ function WorkspacePage() {
       const updatedTrash = [{ ...file, status: "completed" as const }, ...trashFiles];
       saveFilesLocal(updatedFiles);
       saveTrashLocal(updatedTrash);
-      logActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, Trash2);
+      logActivity(
+        "Deleted File",
+        `Moved ${file.name}.${file.extension} to trash bin`,
+        `${file.name}.${file.extension}`,
+        Trash2,
+      );
       if (selectedFileId === file.id) setSelectedFileId(null);
     }
   };
@@ -536,14 +607,24 @@ function WorkspacePage() {
           const updatedFiles = [file, ...files];
           saveFilesLocal(updatedFiles);
           saveTrashLocal(updatedTrash);
-          logActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, RotateCcw);
+          logActivity(
+            "Restored File",
+            `Restored ${file.name}.${file.extension} from trash to workspace`,
+            `${file.name}.${file.extension}`,
+            RotateCcw,
+          );
         });
     } else {
       const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
       const updatedFiles = [file, ...files];
       saveFilesLocal(updatedFiles);
       saveTrashLocal(updatedTrash);
-      logActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, RotateCcw);
+      logActivity(
+        "Restored File",
+        `Restored ${file.name}.${file.extension} from trash to workspace`,
+        `${file.name}.${file.extension}`,
+        RotateCcw,
+      );
     }
   };
 
@@ -560,13 +641,23 @@ function WorkspacePage() {
         .catch(() => {
           const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
           saveTrashLocal(updatedTrash);
-          logActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Trash2);
+          logActivity(
+            "Shredded File",
+            `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`,
+            `${file.name}.${file.extension}`,
+            Trash2,
+          );
           if (selectedFileId === file.id) setSelectedFileId(null);
         });
     } else {
       const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
       saveTrashLocal(updatedTrash);
-      logActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Trash2);
+      logActivity(
+        "Shredded File",
+        `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`,
+        `${file.name}.${file.extension}`,
+        Trash2,
+      );
       if (selectedFileId === file.id) setSelectedFileId(null);
     }
   };
@@ -589,7 +680,9 @@ function WorkspacePage() {
     const fallbackLink = `${window.location.origin}/share/${randomId}`;
     setShareGeneratedLink("Generating secure wrapper...");
 
-    const fileContentPayload = shareFileTarget.content || "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp";
+    const fileContentPayload =
+      shareFileTarget.content ||
+      "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp";
 
     if (isServerOnline) {
       fetch(`${API_BASE_URL}/api/files/${shareFileTarget.id}/shares`, {
@@ -625,14 +718,17 @@ function WorkspacePage() {
           try {
             localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
           } catch (error) {
-            console.warn("localStorage quota exceeded in workspace, storing fallback dummy payload instead", error);
+            console.warn(
+              "localStorage quota exceeded in workspace, storing fallback dummy payload instead",
+              error,
+            );
             const fallbackText = `Decrypted content for ${shareFileTarget.name}.${shareFileTarget.extension}. Due to browser localStorage quota limits of 5MB, the full file content could not be stored in local test environment. SecureShare enterprise releases store encrypted ciphertext blobs in Cloudflare R2 / AWS S3.`;
             const fallbackContent = `data:text/plain;base64,${btoa(unescape(encodeURIComponent(fallbackText)))}`;
             const fallbackShareData = {
               ...shareData,
               content: fallbackContent,
               type: "text/plain",
-              name: `${shareFileTarget.name}_read_me.txt`
+              name: `${shareFileTarget.name}_read_me.txt`,
             };
             localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(fallbackShareData));
           }
@@ -672,14 +768,17 @@ function WorkspacePage() {
       try {
         localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
       } catch (error) {
-        console.warn("localStorage quota exceeded in workspace, storing fallback dummy payload instead", error);
+        console.warn(
+          "localStorage quota exceeded in workspace, storing fallback dummy payload instead",
+          error,
+        );
         const fallbackText = `Decrypted content for ${shareFileTarget.name}.${shareFileTarget.extension}. Due to browser localStorage quota limits of 5MB, the full file content could not be stored in local test environment. SecureShare enterprise releases store encrypted ciphertext blobs in Cloudflare R2 / AWS S3.`;
         const fallbackContent = `data:text/plain;base64,${btoa(unescape(encodeURIComponent(fallbackText)))}`;
         const fallbackShareData = {
           ...shareData,
           content: fallbackContent,
           type: "text/plain",
-          name: `${shareFileTarget.name}_read_me.txt`
+          name: `${shareFileTarget.name}_read_me.txt`,
         };
         localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(fallbackShareData));
       }
@@ -709,20 +808,53 @@ function WorkspacePage() {
       "Generated Share Link",
       `Generated access link for ${shareFileTarget.name}.${shareFileTarget.extension} shared with ${shareEmail || "public link"}`,
       `${shareFileTarget.name}.${shareFileTarget.extension}`,
-      "Share2"
+      "Share2",
     );
   };
 
   const handleCopyLink = (linkText: string, label: string) => {
-    navigator.clipboard.writeText(linkText);
-    setShareCopied(true);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(linkText)
+        .then(() => {
+          setShareCopied(true);
+          setTimeout(() => setShareCopied(false), 2000);
+        })
+        .catch(() => {
+          fallbackCopyText(linkText);
+        });
+    } else {
+      fallbackCopyText(linkText);
+    }
     logActivity("Copied Share Link", `Copied sharing URL for ${label}`, label, Copy);
-    setTimeout(() => setShareCopied(false), 2000);
+  };
+
+  const fallbackCopyText = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      const successful = document.execCommand("copy");
+      if (successful) {
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2000);
+      } else {
+        alert("Please copy the link manually: " + text);
+      }
+    } catch (err) {
+      alert("Please copy the link manually: " + text);
+    }
+    document.body.removeChild(textArea);
   };
 
   // SEARCH AND FILTER
   const filteredFiles = files.filter((f) =>
-    f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const sharedFilesOnly = files.filter((f) => f.shares.length > 0);
@@ -882,7 +1014,9 @@ function WorkspacePage() {
                   <button
                     key={tab}
                     onClick={() => {
-                      setActiveTab(tab as any);
+                      setActiveTab(
+                        tab as "workspace" | "shared" | "activity" | "trash" | "settings",
+                      );
                       setMobileMenuOpen(false);
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors ${
@@ -909,7 +1043,8 @@ function WorkspacePage() {
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold text-ink">Upload Files</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Your files are split, compressed, and encrypted locally using AES-256 before upload.
+                    Your files are split, compressed, and encrypted locally using AES-256 before
+                    upload.
                   </p>
                 </div>
 
@@ -981,7 +1116,9 @@ function WorkspacePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between font-semibold">
-                              <span className="truncate">{item.name}.{item.extension}</span>
+                              <span className="truncate">
+                                {item.name}.{item.extension}
+                              </span>
                               <span className="text-[10px] font-mono">
                                 {item.status === "failed" ? "Failed" : `${item.progress}%`}
                               </span>
@@ -1055,9 +1192,9 @@ function WorkspacePage() {
                     <thead>
                       <tr className="border-b border-border/80 font-mono text-[9px] text-muted-foreground tracking-wider uppercase">
                         <th className="py-3 px-4">File Name</th>
-                        <th className="py-3 px-4">Size</th>
-                        <th className="py-3 px-4">Uploaded</th>
-                        <th className="py-3 px-4">Owner</th>
+                        <th className="py-3 px-4 hidden sm:table-cell">Size</th>
+                        <th className="py-3 px-4 hidden md:table-cell">Uploaded</th>
+                        <th className="py-3 px-4 hidden lg:table-cell">Owner</th>
                         <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -1086,15 +1223,22 @@ function WorkspacePage() {
                                 </p>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-muted-foreground font-mono">{file.size}</td>
-                            <td className="py-3 px-4 text-muted-foreground">{file.uploadTime}</td>
-                            <td className="py-3 px-4">
+                            <td className="py-3 px-4 text-muted-foreground font-mono hidden sm:table-cell">
+                              {file.size}
+                            </td>
+                            <td className="py-3 px-4 text-muted-foreground hidden md:table-cell">
+                              {file.uploadTime}
+                            </td>
+                            <td className="py-3 px-4 hidden lg:table-cell">
                               <div className="flex items-center gap-1.5 text-muted-foreground">
                                 <User className="h-3 w-3" />
                                 <span>{file.owner}</span>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td
+                              className="py-3 px-4 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   onClick={() => handlePreview(file)}
@@ -1138,7 +1282,10 @@ function WorkspacePage() {
                       })}
                       {filteredFiles.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-muted-foreground font-mono">
+                          <td
+                            colSpan={5}
+                            className="py-12 text-center text-muted-foreground font-mono"
+                          >
                             No files found in workspace.
                           </td>
                         </tr>
@@ -1162,9 +1309,13 @@ function WorkspacePage() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <span className="font-semibold text-ink">{act.action}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">{act.time || act.timestamp}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              {act.time || act.timestamp}
+                            </span>
                           </div>
-                          <p className="text-muted-foreground mt-0.5 leading-relaxed">{act.details}</p>
+                          <p className="text-muted-foreground mt-0.5 leading-relaxed">
+                            {act.details}
+                          </p>
                         </div>
                       </div>
                     );
@@ -1210,7 +1361,9 @@ function WorkspacePage() {
                                 <FileIcon className="h-4.5 w-4.5" />
                               </div>
                               <div>
-                                <p className="truncate max-w-[200px]">{file.name}.{file.extension}</p>
+                                <p className="truncate max-w-[200px]">
+                                  {file.name}.{file.extension}
+                                </p>
                               </div>
                             </td>
                             <td className="py-3 px-4 font-mono text-[11px] text-muted-foreground">
@@ -1262,11 +1415,14 @@ function WorkspacePage() {
                             </td>
                           </tr>
                         );
-                      })
+                      }),
                     )}
                     {sharedFilesOnly.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-muted-foreground font-mono">
+                        <td
+                          colSpan={6}
+                          className="py-12 text-center text-muted-foreground font-mono"
+                        >
                           No active shares recorded.
                         </td>
                       </tr>
@@ -1291,14 +1447,19 @@ function WorkspacePage() {
                 {activities.map((act) => {
                   const ActIcon = act.icon || getIconComponent(act.iconName);
                   return (
-                    <div key={act.id} className="flex gap-4 text-xs pb-4 border-b border-border/40 last:border-0">
+                    <div
+                      key={act.id}
+                      className="flex gap-4 text-xs pb-4 border-b border-border/40 last:border-0"
+                    >
                       <div className="h-8 w-8 rounded-full bg-mist flex items-center justify-center text-muted-foreground shrink-0 mt-0.5">
                         <ActIcon className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-ink text-sm">{act.action}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">{act.time || act.timestamp}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {act.time || act.timestamp}
+                          </span>
                         </div>
                         <p className="text-muted-foreground mt-1 leading-relaxed">{act.details}</p>
                         {(act.fileName || act.target) && (
@@ -1348,7 +1509,9 @@ function WorkspacePage() {
                               <FileIcon className="h-4.5 w-4.5" />
                             </div>
                             <div>
-                              <p className="truncate max-w-[200px]">{file.name}.{file.extension}</p>
+                              <p className="truncate max-w-[200px]">
+                                {file.name}.{file.extension}
+                              </p>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground font-mono">{file.size}</td>
@@ -1376,7 +1539,10 @@ function WorkspacePage() {
                     })}
                     {trashFiles.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-12 text-center text-muted-foreground font-mono">
+                        <td
+                          colSpan={4}
+                          className="py-12 text-center text-muted-foreground font-mono"
+                        >
                           Trash is empty.
                         </td>
                       </tr>
@@ -1404,14 +1570,19 @@ function WorkspacePage() {
                     <label className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                       <div>
                         <p className="font-semibold text-ink">Enable Default Expiry</p>
-                        <p className="text-[10px] mt-0.5">Automatically apply expiry triggers (24 hours) on all generated share links.</p>
+                        <p className="text-[10px] mt-0.5">
+                          Automatically apply expiry triggers (24 hours) on all generated share
+                          links.
+                        </p>
                       </div>
                       <input type="checkbox" defaultChecked className="rounded border-gray-300" />
                     </label>
                     <label className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                       <div>
                         <p className="font-semibold text-ink">Auto-Revoke on PII match</p>
-                        <p className="text-[10px] mt-0.5">Shred keys automatically if the file matches regulatory compliance blocks.</p>
+                        <p className="text-[10px] mt-0.5">
+                          Shred keys automatically if the file matches regulatory compliance blocks.
+                        </p>
                       </div>
                       <input type="checkbox" defaultChecked className="rounded border-gray-300" />
                     </label>
@@ -1423,7 +1594,9 @@ function WorkspacePage() {
                   <div className="p-4 rounded-xl border border-border bg-card flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-ink">Client WebCrypto Provider</p>
-                      <p className="text-[10px] mt-0.5 font-mono">Browser Native SubtleCrypto (W3C Standard)</p>
+                      <p className="text-[10px] mt-0.5 font-mono">
+                        Browser Native SubtleCrypto (W3C Standard)
+                      </p>
                     </div>
                     <span className="rounded bg-signal/15 px-2 py-0.5 text-[9px] font-bold text-signal font-mono uppercase">
                       Operational
@@ -1447,7 +1620,10 @@ function WorkspacePage() {
                     return <FileIconComponent className="h-8 w-8" strokeWidth={1.5} />;
                   })()}
                 </div>
-                <h4 className="mt-4 text-xs font-semibold text-ink truncate w-full max-w-[200px]" title={selectedFile.name}>
+                <h4
+                  className="mt-4 text-xs font-semibold text-ink truncate w-full max-w-[200px]"
+                  title={selectedFile.name}
+                >
                   {selectedFile.name}.{selectedFile.extension}
                 </h4>
                 <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
@@ -1463,7 +1639,10 @@ function WorkspacePage() {
                 <div className="space-y-2.5 text-xs text-muted-foreground">
                   <div className="flex justify-between">
                     <span>MIME Type</span>
-                    <span className="text-ink font-mono text-[10px] max-w-[120px] truncate" title={selectedFile.type}>
+                    <span
+                      className="text-ink font-mono text-[10px] max-w-[120px] truncate"
+                      title={selectedFile.type}
+                    >
                       {selectedFile.type}
                     </span>
                   </div>
@@ -1492,9 +1671,15 @@ function WorkspacePage() {
                 </h4>
                 <div className="space-y-3 overflow-y-auto flex-1 max-h-[220px]">
                   {selectedFile.shares.map((share) => (
-                    <div key={share.id} className="border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                    <div
+                      key={share.id}
+                      className="border-b border-border/40 pb-2 last:border-0 last:pb-0"
+                    >
                       <div className="flex justify-between text-xs">
-                        <span className="font-mono font-semibold text-ink truncate max-w-[140px]" title={share.recipientEmail}>
+                        <span
+                          className="font-mono font-semibold text-ink truncate max-w-[140px]"
+                          title={share.recipientEmail}
+                        >
                           {share.recipientEmail}
                         </span>
                         <span className="text-[9px] font-mono text-signal uppercase font-bold">
@@ -1502,7 +1687,9 @@ function WorkspacePage() {
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span>Downloads: {share.downloadsCount}/{share.downloadLimit}</span>
+                        <span>
+                          Downloads: {share.downloadsCount}/{share.downloadLimit}
+                        </span>
                         <button
                           onClick={() => handleCopyLink(share.url, selectedFile.name)}
                           className="text-ink hover:underline font-bold flex items-center gap-0.5"
@@ -1581,7 +1768,9 @@ function WorkspacePage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="block font-semibold text-ink">Password Protection</span>
-                        <span className="text-[9px] text-muted-foreground">Force passphrase input before decryption</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          Force passphrase input before decryption
+                        </span>
                       </div>
                       <input
                         type="checkbox"
@@ -1611,7 +1800,9 @@ function WorkspacePage() {
                     <div className="flex items-center justify-between border-t border-border/40 pt-3">
                       <div>
                         <span className="block font-semibold text-ink">One-time Download</span>
-                        <span className="text-[9px] text-muted-foreground">Link automatically shreds after download</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          Link automatically shreds after download
+                        </span>
                       </div>
                       <input
                         type="checkbox"
@@ -1760,7 +1951,8 @@ function WorkspacePage() {
                     <FileText className="h-10 w-10 text-muted-foreground/60 mb-2" />
                     <p className="font-semibold">Q4 Financial Audit Statement</p>
                     <p className="text-[10px] text-muted-foreground mt-1 max-w-xs">
-                      [Document verified under AES-GCM-256 local client wrapper. Decryption key signature validates.]
+                      [Document verified under AES-GCM-256 local client wrapper. Decryption key
+                      signature validates.]
                     </p>
                   </div>
                 ) : (
@@ -1768,7 +1960,8 @@ function WorkspacePage() {
                     <FileLock2 className="h-10 w-10 text-muted-foreground/60 mb-2" />
                     <p className="font-semibold">Binary Data View</p>
                     <p className="text-[10px] text-muted-foreground mt-1 max-w-xs">
-                      No text preview available for .{previewTarget.extension} files. Use Download action to decrypt and extract raw contents.
+                      No text preview available for .{previewTarget.extension} files. Use Download
+                      action to decrypt and extract raw contents.
                     </p>
                   </div>
                 )}
