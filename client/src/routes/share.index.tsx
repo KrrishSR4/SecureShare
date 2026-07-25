@@ -863,7 +863,7 @@ function WorkspacePage() {
   const sharedFilesOnly = files.filter((f) => f.shares.length > 0);
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground grain flex flex-col font-sans">
+    <div className="relative min-h-screen bg-background text-foreground grain flex flex-col font-play">
       {/* Top Navbar */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1550px] items-center justify-between px-6 md:px-10">
