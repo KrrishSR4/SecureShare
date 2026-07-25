@@ -1,25 +1,19 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
-const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  return Math.sqrt(dx * dx + dy * dy);
-};
-
-const getAttr = (distance: number, maxDist: number, minVal: number, maxVal: number) => {
-  const val = maxVal - Math.abs((maxVal * distance) / maxDist);
-  return Math.max(minVal, val + minVal);
-};
-
-const debounce = (func: (...args: any[]) => void, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
+// Debounce helper
+function debounce<T extends (...args: unknown[]) => void>(
+  func: T,
+  wait: number,
+): (...args: Parameters<T>) => void {
+  let timeout: ReturnType<typeof setTimeout> | null;
+  return function (this: unknown, ...args: Parameters<T>) {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = null;
+      func.apply(this, args);
+    }, wait);
   };
-};
+}
 
 interface TextPressureProps {
   text?: string;
@@ -36,120 +30,55 @@ interface TextPressureProps {
   strokeColor?: string;
   className?: string;
   minFontSize?: number;
-  shine?: boolean;
 }
 
 export default function TextPressure({
-  text = 'Compressa',
-  fontFamily = 'Mona Sans',
-  fontUrl = 'https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght,wdth@0,200..900,75..125;1,200..900,75..125&display=swap',
-
+  text = "Compressa",
+  fontFamily = "Roboto Flex",
+  fontUrl = "https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap",
   width = true,
   weight = true,
   italic = true,
   alpha = false,
-
   flex = true,
   stroke = false,
   scale = false,
-
-  textColor = '#FFFFFF',
-  strokeColor = '#FF0000',
-  className = '',
-
+  textColor = "#FFFFFF",
+  strokeColor = "#FF0000",
+  className = "",
   minFontSize = 24,
-  shine = false
 }: TextPressureProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   const spansRef = useRef<(HTMLSpanElement | null)[]>([]);
 
   const mouseRef = useRef({ x: 0, y: 0 });
   const cursorRef = useRef({ x: 0, y: 0 });
-  const isHovered = useRef(false);
 
   const [fontSize, setFontSize] = useState(minFontSize);
   const [scaleY, setScaleY] = useState(1);
   const [lineHeight, setLineHeight] = useState(1);
 
-  const chars = text.split('');
+  const chars = text.split("");
 
-  // Performance cache: store dimensions to avoid layout thrashing during frame loop
-  const charCentersRef = useRef<number[]>([]);
-  const maxDistRef = useRef(100);
-
-  const cacheDimensions = useCallback(() => {
-    if (!titleRef.current) return;
-    const titleRect = titleRef.current.getBoundingClientRect();
-    maxDistRef.current = titleRect.width / 2;
-
-    charCentersRef.current = spansRef.current.map((span) => {
-      if (!span) return 0;
-      const rect = span.getBoundingClientRect();
-      return rect.left + rect.width / 2;
-    });
-  }, []);
-
-  // Keep track of current variation values for each span to animate smoothly
-  const currentValues = useRef<{ wght: number; wdth: number; ital: number }[]>([]);
-
-  useEffect(() => {
-    currentValues.current = chars.map(() => ({
-      wght: 400,
-      wdth: 100,
-      ital: 0
-    }));
-  }, [text]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      cursorRef.current.x = e.clientX;
-      cursorRef.current.y = e.clientY;
-    };
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 0) return;
-      const t = e.touches[0];
-      cursorRef.current.x = t.clientX;
-      cursorRef.current.y = t.clientY;
-    };
-
-    const handlePointerEnter = () => {
-      isHovered.current = true;
-      cacheDimensions(); // Recalculate cached locations on enter in case layout shifted
-    };
-    const handlePointerLeave = () => {
-      isHovered.current = false;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    container.addEventListener('pointerenter', handlePointerEnter);
-    container.addEventListener('pointerleave', handlePointerLeave);
-
-    const { left, top, width: w, height: h } = container.getBoundingClientRect();
-    mouseRef.current.x = left + w / 2;
-    mouseRef.current.y = top + h / 2;
-    cursorRef.current.x = mouseRef.current.x;
-    cursorRef.current.y = mouseRef.current.y;
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
-      container.removeEventListener('pointerenter', handlePointerEnter);
-      container.removeEventListener('pointerleave', handlePointerLeave);
-    };
-  }, [cacheDimensions]);
+  const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
 
   const setSize = useCallback(() => {
     if (!containerRef.current || !titleRef.current) return;
 
     const { width: containerW, height: containerH } = containerRef.current.getBoundingClientRect();
 
-    // Divide by chars.length * 0.9 to ensure text never overflows even when fully stretched
-    let newFontSize = containerW / (chars.length * 0.9);
+    let newFontSize;
+    if (flex) {
+      newFontSize = containerW / chars.length;
+    } else {
+      newFontSize = containerW / (chars.length / 2);
+    }
+
     newFontSize = Math.max(newFontSize, minFontSize);
 
     setFontSize(newFontSize);
@@ -166,64 +95,46 @@ export default function TextPressure({
         setLineHeight(yRatio);
       }
     });
-  }, [chars.length, minFontSize, scale]);
+  }, [chars.length, minFontSize, scale, flex]);
 
   useEffect(() => {
-    const debouncedSetSize = debounce(() => {
-      setSize();
-      setTimeout(cacheDimensions, 150);
-    }, 100);
-    debouncedSetSize();
-    window.addEventListener('resize', debouncedSetSize);
-    return () => window.removeEventListener('resize', debouncedSetSize);
-  }, [setSize, cacheDimensions]);
+    const debouncedSetSize = debounce(setSize, 100);
+    setSize();
+    window.addEventListener("resize", debouncedSetSize);
+    return () => window.removeEventListener("resize", debouncedSetSize);
+  }, [setSize]);
 
   useEffect(() => {
     let rafId: number;
     const animate = () => {
-      // Lerp mouse coordinates smoothly (lerp factor 0.1 for buttery feedback)
-      mouseRef.current.x += (cursorRef.current.x - mouseRef.current.x) / 10;
-      mouseRef.current.y += (cursorRef.current.y - mouseRef.current.y) / 10;
+      mouseRef.current.x += (cursorRef.current.x - mouseRef.current.x) / 15;
+      mouseRef.current.y += (cursorRef.current.y - mouseRef.current.y) / 15;
 
       if (titleRef.current) {
-        const maxDist = maxDistRef.current;
+        const titleRect = titleRef.current.getBoundingClientRect();
+        const maxDist = titleRect.width / 2;
 
-        spansRef.current.forEach((span, i) => {
+        spansRef.current.forEach((span) => {
           if (!span) return;
+          const rect = span.getBoundingClientRect();
+          const charCenter = {
+            x: rect.x + rect.width / 2,
+            y: rect.y + rect.height / 2,
+          };
+          const d = dist(mouseRef.current, charCenter);
 
-          let targetWdth = 100;
-          let targetWght = 400;
-          let targetItal = 0;
+          const getAttr = (distance: number, minVal: number, maxVal: number) => {
+            const val = maxVal - Math.abs((maxVal * distance) / maxDist);
+            return Math.max(minVal, val + minVal);
+          };
 
-          // Reflow-free variable animation using cached centers
-          if (isHovered.current) {
-            const charCenterX = charCentersRef.current[i] || 0;
-            const dx = charCenterX - mouseRef.current.x;
-            const d = Math.abs(dx);
+          const wdth = width ? Math.floor(getAttr(d, 50, 150)) : 100;
+          const wght = weight ? Math.floor(getAttr(d, 100, 900)) : 400;
+          const italVal = italic ? getAttr(d, 0, 1).toFixed(2) : 0;
+          const alphaVal = alpha ? getAttr(d, 0.1, 1).toFixed(2) : 1;
 
-            targetWdth = width ? Math.floor(getAttr(d, maxDist, 75, 125)) : 100;
-            targetWght = weight ? Math.floor(getAttr(d, maxDist, 200, 900)) : 400;
-            targetItal = italic ? parseFloat(getAttr(d, maxDist, 0, 1).toFixed(2)) : 0;
-          }
-
-          // Smoothly interpolate current values to target values
-          if (!currentValues.current[i]) {
-            currentValues.current[i] = { wght: 400, wdth: 100, ital: 0 };
-          }
-          const curr = currentValues.current[i];
-          curr.wdth += (targetWdth - curr.wdth) * 0.15;
-          curr.wght += (targetWght - curr.wght) * 0.15;
-          curr.ital += (targetItal - curr.ital) * 0.15;
-
-          const wght = Math.round(curr.wght);
-          const wdth = Math.round(curr.wdth);
-          const italVal = curr.ital.toFixed(2);
-
-          const newFontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'ital' ${italVal}`;
-
-          if (span.style.fontVariationSettings !== newFontVariationSettings) {
-            span.style.fontVariationSettings = newFontVariationSettings;
-          }
+          span.style.opacity = alphaVal.toString();
+          span.style.fontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'ital' ${italVal}`;
         });
       }
 
@@ -232,35 +143,46 @@ export default function TextPressure({
 
     animate();
     return () => cancelAnimationFrame(rafId);
-  }, [width, weight, italic]);
+  }, [width, weight, italic, alpha]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      cursorRef.current.x = e.clientX;
+      cursorRef.current.y = e.clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        cursorRef.current.x = e.touches[0].clientX;
+        cursorRef.current.y = e.touches[0].clientY;
+      }
+    };
+
+    const handlePointerLeave = () => {
+      if (container) {
+        const { left, top, width: w, height: h } = container.getBoundingClientRect();
+        cursorRef.current.x = left + w / 2;
+        cursorRef.current.y = top + h / 2;
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove);
+    container.addEventListener("pointerleave", handlePointerLeave);
+
+    handlePointerLeave();
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("pointerleave", handlePointerLeave);
+    };
+  }, []);
 
   const styleElement = useMemo(() => {
-    const shineStyles = shine ? `
-      @keyframes textShine {
-        0% {
-          background-position: 200% center;
-        }
-        100% {
-          background-position: -200% center;
-        }
-      }
-
-      .text-shine {
-        background: linear-gradient(
-          110deg,
-          ${textColor} 30%,
-          #00f0ff 46%,
-          #ffffff 50%,
-          #00f0ff 54%,
-          ${textColor} 70%
-        );
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: textShine 6s linear infinite;
-      }
-    ` : '';
-
     return (
       <style>{`
         @import url('${fontUrl}');
@@ -285,32 +207,25 @@ export default function TextPressure({
           -webkit-text-stroke-color: ${strokeColor};
         }
 
-        ${shine ? '' : `
-          .text-pressure-title {
-            color: ${textColor};
-          }
-        `}
-
-        ${shineStyles}
+        .text-pressure-title {
+          color: ${textColor};
+        }
       `}</style>
     );
-  }, [fontFamily, fontUrl, textColor, strokeColor, shine]);
+  }, [fontFamily, fontUrl, textColor, strokeColor]);
 
-  const dynamicClassName = [
-    className, 
-    flex ? 'flex-pressure' : '', 
-    stroke ? 'stroke' : '',
-    shine ? 'text-shine' : ''
-  ].filter(Boolean).join(' ');
+  const dynamicClassName = [className, flex ? "flex-pressure" : "", stroke ? "stroke" : ""]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
       ref={containerRef}
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        background: 'transparent'
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        background: "transparent",
       }}
     >
       {styleElement}
@@ -322,28 +237,25 @@ export default function TextPressure({
           fontSize: `${fontSize}px`,
           lineHeight,
           transform: `scale(1, ${scaleY})`,
-          transformOrigin: 'center top',
+          transformOrigin: "center top",
           margin: 0,
-          textAlign: 'center',
-          userSelect: 'none',
-          whiteSpace: 'nowrap',
+          textAlign: "center",
+          userSelect: "none",
+          whiteSpace: "nowrap",
           fontWeight: 100,
-          width: '100%'
+          width: "100%",
         }}
       >
         {chars.map((char, i) => (
           <span
             key={i}
-            ref={el => {
+            ref={(el) => {
               spansRef.current[i] = el;
             }}
             data-char={char}
-            style={{
-              display: 'inline-block',
-              color: stroke ? undefined : (shine ? 'inherit' : textColor)
-            }}
+            style={{ display: "inline-block" }}
           >
-            {char === ' ' ? '\u00A0' : char}
+            {char === " " ? "\u00A0" : char}
           </span>
         ))}
       </h1>

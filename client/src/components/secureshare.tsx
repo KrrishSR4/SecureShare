@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type MouseEvent } from "react";
+import { useEffect, useRef, useState, memo, type ReactNode, type MouseEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   motion,
@@ -164,7 +164,6 @@ export function SpotlightCard({
   );
 }
 
-
 const MotionLink = motion(Link);
 
 /* ---------- Magnetic Button ---------- */
@@ -289,7 +288,6 @@ export function Spotlight() {
     />
   );
 }
-
 
 /* ---------- Nav ---------- */
 export function Nav() {
@@ -489,7 +487,6 @@ export function HeroVisualization() {
     container.addEventListener("pointerenter", onMouseEnter);
     container.addEventListener("pointermove", onMouseMove);
     container.addEventListener("pointerleave", onMouseLeave);
-
 
     // GSAP sequential storytelling timeline (Plays ONCE on refresh/mount)
     const ctx = gsap.context(() => {
@@ -1828,56 +1825,70 @@ export function Section({
   );
 }
 
-/* ---------- Footer ---------- */
-export function Footer() {
-  const cols = [
-    { t: "Product", l: ["Overview", "Data Rooms", "Privacy Engine", "Access Control", "Audit"] },
-    { t: "Security", l: ["Architecture", "Encryption", "Zero-Trust", "Bug Bounty", "Status"] },
-    { t: "Compliance", l: ["SOC 2", "ISO 27001", "GDPR", "HIPAA", "DPA"] },
-    { t: "Developers", l: ["Documentation", "API Reference", "SDKs", "Changelog", "Webhooks"] },
-    { t: "Company", l: ["About", "Careers", "Press", "Contact"] },
+/* ---------- Interactive Watermark ---------- */
+const InteractiveWatermark = memo(() => {
+  const [clicks, setClicks] = useState(0);
+
+  useEffect(() => {
+    const handleClick = () => setClicks((prev) => (prev + 1) % 12);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
+
+  const chars = "SecureShare".split("");
+  const PALETTE = [
+    "#2563EB",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#06B6D4",
+    "#EC4899",
+    "#84CC16",
+    "#F97316",
+    "#6366F1",
+    "#14B8A6",
   ];
 
   return (
-    <footer className="border-t border-border bg-surface">
-      <div className="mx-auto max-w-[1400px] px-6 py-20 pb-0 md:px-10 md:pb-0">
-        <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(5,1fr)]">
-          <div>
-            <div className="flex items-center gap-2">
-              <LogoMark />
-              <span className="font-display text-2xl">SecureShare</span>
-            </div>
-            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-              Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive
-              data at any moment.
-            </p>
-            <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-signal" />
-              All systems operational
-            </div>
-          </div>
-          {cols.map((c) => (
-            <div key={c.t}>
-              <div className="eyebrow">{c.t}</div>
-              <ul className="mt-4 space-y-2 text-sm">
-                {c.l.map((x) => (
-                  <li key={x}>
-                    <a
-                      href={x === "Documentation" ? "/docs" : "#"}
-                      target={x === "Documentation" ? "_blank" : undefined}
-                      rel={x === "Documentation" ? "noopener noreferrer" : undefined}
-                      className="text-muted-foreground transition-colors hover:text-ink"
-                    >
-                      {x}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+    <div className="absolute bottom-0 left-0 right-0 w-full overflow-hidden pointer-events-none select-none z-0 flex justify-center pb-[2vw]">
+      <div
+        className="font-black whitespace-nowrap"
+        style={{
+          fontFamily: "Inter, sans-serif",
+          opacity: 1,
+          fontSize: "14.5vw",
+          letterSpacing: "-0.04em",
+          lineHeight: 0.75,
+        }}
+      >
+        {chars.map((char, i) => {
+          const colorIndex = clicks - 1 - i;
+          const color =
+            colorIndex >= 0 && colorIndex < PALETTE.length ? PALETTE[colorIndex] : "#111111";
+          return (
+            <span
+              key={i}
+              style={{
+                color,
+                transition: "color 250ms ease-out",
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
-        <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 text-xs text-muted-foreground md:flex-row md:items-center">
+/* ---------- Footer ---------- */
+export function Footer() {
+  return (
+    <footer className="relative border-t border-border bg-surface overflow-hidden">
+      <div className="relative z-10 mx-auto max-w-[1400px] px-6 pt-16 pb-[18vw] md:px-10 md:pt-20 md:pb-[17vw]">
+        <div className="flex flex-col items-start justify-between gap-4 text-xs text-muted-foreground md:flex-row md:items-center">
           <div className="flex items-center gap-4">
             <span>© {new Date().getFullYear()} SecureShare, Inc.</span>
             <a href="#" className="hover:text-ink">
@@ -1893,27 +1904,7 @@ export function Footer() {
           <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
         </div>
       </div>
-
-      <div 
-        className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-default py-8 bg-background/30"
-        style={{ touchAction: "pan-y" }}
-      >
-        <div className="mx-auto max-w-[1400px] px-6 md:px-10">
-          <TextPressure
-            text="SecureShare"
-            flex={true}
-            alpha={false}
-            stroke={false}
-            width={true}
-            weight={true}
-            italic={true}
-            textColor="var(--color-ink)"
-            strokeColor="#5227FF"
-            minFontSize={48}
-            shine={true}
-          />
-        </div>
-      </div>
+      <InteractiveWatermark />
     </footer>
   );
 }

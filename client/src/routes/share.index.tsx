@@ -78,11 +78,14 @@ interface WorkspaceFile {
 
 interface ActivityEvent {
   id: string;
-  time: string;
+  time?: string;
+  timestamp?: string;
   action: string;
   details: string;
   fileName?: string;
-  icon: typeof FileText;
+  target?: string;
+  icon?: React.ElementType;
+  iconName?: string;
 }
 
 // SAMPLE INITIAL DATA
@@ -808,7 +811,7 @@ function WorkspacePage() {
       "Generated Share Link",
       `Generated access link for ${shareFileTarget.name}.${shareFileTarget.extension} shared with ${shareEmail || "public link"}`,
       `${shareFileTarget.name}.${shareFileTarget.extension}`,
-      "Share2",
+      Share2,
     );
   };
 
@@ -1069,8 +1072,7 @@ function WorkspacePage() {
                   <input
                     ref={folderInputRef}
                     type="file"
-                    webkitdirectory=""
-                    directory=""
+                    {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
                     multiple
                     className="hidden"
                     onChange={handleFolderInput}
