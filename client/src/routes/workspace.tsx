@@ -73,6 +73,7 @@ interface WorkspaceFile {
   type: string;
   shares: SharedSession[];
   isFolder?: boolean;
+  content?: string;
 }
 
 interface ActivityEvent {
@@ -296,34 +297,37 @@ function WorkspacePage() {
   };
 
   const handleFilesSelected = (fileList: FileList) => {
-    const newUploads: WorkspaceFile[] = [];
-
-    Array.from(fileList).forEach((file, index) => {
+    Array.from(fileList).forEach((file) => {
       const ext = file.name.split(".").pop() || "bin";
       const baseName = file.name.substring(0, file.name.lastIndexOf("."));
       const sizeKB = file.size / 1024;
       const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB.toFixed(0)} KB`;
 
       const uploadId = `up-${Math.random().toString(36).substring(2, 9)}`;
-      const fileToUpload: WorkspaceFile = {
-        id: uploadId,
-        name: baseName || file.name,
-        extension: ext,
-        size: sizeStr,
-        sizeBytes: file.size,
-        uploadTime: "Just now",
-        owner: "Alex Rivera",
-        status: "uploading",
-        progress: 0,
-        type: file.type || "application/octet-stream",
-        shares: [],
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const fileContent = (e.target?.result as string) || "";
+        const fileToUpload: WorkspaceFile = {
+          id: uploadId,
+          name: baseName || file.name,
+          extension: ext,
+          size: sizeStr,
+          sizeBytes: file.size,
+          uploadTime: "Just now",
+          owner: "Alex Rivera",
+          status: "uploading",
+          progress: 0,
+          type: file.type || "application/octet-stream",
+          shares: [],
+          content: fileContent,
+        };
+
+        setUploadingQueue((prev) => [...prev, fileToUpload]);
+        simulateUploadProgress(uploadId, fileToUpload);
       };
-
-      newUploads.push(fileToUpload);
-      simulateUploadProgress(uploadId, fileToUpload);
+      reader.readAsDataURL(file);
     });
-
-    setUploadingQueue((prev) => [...prev, ...newUploads]);
   };
 
   const simulateUploadProgress = (id: string, fileInfo: WorkspaceFile) => {
@@ -442,8 +446,21 @@ function WorkspacePage() {
     if (!shareFileTarget) return;
 
     const randomId = Math.random().toString(36).substring(2, 8);
-    const link = `https://localhost/share/${randomId}`;
+    const link = `${window.location.origin}/share/${randomId}`;
     setShareGeneratedLink(link);
+
+    // Save payload to localStorage for cross-tab sharing functionality
+    const shareData = {
+      id: randomId,
+      name: `${shareFileTarget.name}.${shareFileTarget.extension}`,
+      size: shareFileTarget.size,
+      type: shareFileTarget.type,
+      content: shareFileTarget.content || "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp",
+      requirePassword: false,
+      password: "",
+      oneTimeDownload: false,
+    };
+    localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
 
     // Add share record to file
     const newShare: SharedSession = {
