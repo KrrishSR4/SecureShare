@@ -36,6 +36,7 @@ interface TextPressureProps {
   strokeColor?: string;
   className?: string;
   minFontSize?: number;
+  shine?: boolean;
 }
 
 export default function TextPressure({
@@ -56,7 +57,8 @@ export default function TextPressure({
   strokeColor = '#FF0000',
   className = '',
 
-  minFontSize = 24
+  minFontSize = 24,
+  shine = false
 }: TextPressureProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -64,6 +66,7 @@ export default function TextPressure({
 
   const mouseRef = useRef({ x: 0, y: 0 });
   const cursorRef = useRef({ x: 0, y: 0 });
+  const isHovered = useRef(false);
 
   const [fontSize, setFontSize] = useState(minFontSize);
   const [scaleY, setScaleY] = useState(1);
@@ -71,7 +74,21 @@ export default function TextPressure({
 
   const chars = text.split('');
 
+  // Keep track of current variation values for each span to animate smoothly
+  const currentValues = useRef<{ wght: number; wdth: number; ital: number }[]>([]);
+
   useEffect(() => {
+    currentValues.current = chars.map(() => ({
+      wght: 400,
+      wdth: 100,
+      ital: 0
+    }));
+  }, [text]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       cursorRef.current.x = e.clientX;
       cursorRef.current.y = e.clientY;
@@ -83,20 +100,29 @@ export default function TextPressure({
       cursorRef.current.y = t.clientY;
     };
 
+    const handlePointerEnter = () => {
+      isHovered.current = true;
+    };
+    const handlePointerLeave = () => {
+      isHovered.current = false;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('pointerenter', handlePointerEnter);
+    container.addEventListener('pointerleave', handlePointerLeave);
 
-    if (containerRef.current) {
-      const { left, top, width: w, height: h } = containerRef.current.getBoundingClientRect();
-      mouseRef.current.x = left + w / 2;
-      mouseRef.current.y = top + h / 2;
-      cursorRef.current.x = mouseRef.current.x;
-      cursorRef.current.y = mouseRef.current.y;
-    }
+    const { left, top, width: w, height: h } = container.getBoundingClientRect();
+    mouseRef.current.x = left + w / 2;
+    mouseRef.current.y = top + h / 2;
+    cursorRef.current.x = mouseRef.current.x;
+    cursorRef.current.y = mouseRef.current.y;
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('pointerenter', handlePointerEnter);
+      container.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, []);
 
@@ -134,6 +160,7 @@ export default function TextPressure({
   useEffect(() => {
     let rafId: number;
     const animate = () => {
+      // Lerp mouse coordinates smoothly
       mouseRef.current.x += (cursorRef.current.x - mouseRef.current.x) / 15;
       mouseRef.current.y += (cursorRef.current.y - mouseRef.current.y) / 15;
 
@@ -141,30 +168,45 @@ export default function TextPressure({
         const titleRect = titleRef.current.getBoundingClientRect();
         const maxDist = titleRect.width / 2;
 
-        spansRef.current.forEach(span => {
+        spansRef.current.forEach((span, i) => {
           if (!span) return;
 
-          const rect = span.getBoundingClientRect();
-          const charCenter = {
-            x: rect.x + rect.width / 2,
-            y: rect.y + rect.height / 2
-          };
+          let targetWdth = 100;
+          let targetWght = 400;
+          let targetItal = 0;
 
-          const d = dist(mouseRef.current, charCenter);
+          // If currently hovering, calculate target variations based on proximity
+          if (isHovered.current) {
+            const rect = span.getBoundingClientRect();
+            const charCenter = {
+              x: rect.x + rect.width / 2,
+              y: rect.y + rect.height / 2
+            };
 
-          // Roboto Flex width axis goes from 25 to 151, weight axis from 100 to 1000
-          const wdth = width ? Math.floor(getAttr(d, maxDist, 25, 151)) : 100;
-          const wght = weight ? Math.floor(getAttr(d, maxDist, 100, 1000)) : 400;
-          const italVal = italic ? getAttr(d, maxDist, 0, 1).toFixed(2) : 0;
-          const alphaVal = alpha ? getAttr(d, maxDist, 0, 1).toFixed(2) : 1;
+            const d = dist(mouseRef.current, charCenter);
+
+            targetWdth = width ? Math.floor(getAttr(d, maxDist, 25, 151)) : 100;
+            targetWght = weight ? Math.floor(getAttr(d, maxDist, 100, 1000)) : 400;
+            targetItal = italic ? parseFloat(getAttr(d, maxDist, 0, 1).toFixed(2)) : 0;
+          }
+
+          // Smoothly interpolate current values to target values
+          if (!currentValues.current[i]) {
+            currentValues.current[i] = { wght: 400, wdth: 100, ital: 0 };
+          }
+          const curr = currentValues.current[i];
+          curr.wdth += (targetWdth - curr.wdth) * 0.1;
+          curr.wght += (targetWght - curr.wght) * 0.1;
+          curr.ital += (targetItal - curr.ital) * 0.1;
+
+          const wght = Math.round(curr.wght);
+          const wdth = Math.round(curr.wdth);
+          const italVal = curr.ital.toFixed(2);
 
           const newFontVariationSettings = `'wght' ${wght}, 'wdth' ${wdth}, 'ital' ${italVal}`;
 
           if (span.style.fontVariationSettings !== newFontVariationSettings) {
             span.style.fontVariationSettings = newFontVariationSettings;
-          }
-          if (alpha && span.style.opacity !== alphaVal) {
-            span.style.opacity = alphaVal;
           }
         });
       }
@@ -174,9 +216,35 @@ export default function TextPressure({
 
     animate();
     return () => cancelAnimationFrame(rafId);
-  }, [width, weight, italic, alpha]);
+  }, [width, weight, italic]);
 
   const styleElement = useMemo(() => {
+    const shineStyles = shine ? `
+      @keyframes textShine {
+        0% {
+          background-position: 200% center;
+        }
+        100% {
+          background-position: -200% center;
+        }
+      }
+
+      .text-shine {
+        background: linear-gradient(
+          110deg,
+          ${textColor} 30%,
+          #00f0ff 46%,
+          #ffffff 50%,
+          #00f0ff 54%,
+          ${textColor} 70%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: textShine 6s linear infinite;
+      }
+    ` : '';
+
     return (
       <style>{`
         @import url('${fontUrl}');
@@ -201,14 +269,23 @@ export default function TextPressure({
           -webkit-text-stroke-color: ${strokeColor};
         }
 
-        .text-pressure-title {
-          color: ${textColor};
-        }
+        ${shine ? '' : `
+          .text-pressure-title {
+            color: ${textColor};
+          }
+        `}
+
+        ${shineStyles}
       `}</style>
     );
-  }, [fontFamily, fontUrl, textColor, strokeColor]);
+  }, [fontFamily, fontUrl, textColor, strokeColor, shine]);
 
-  const dynamicClassName = [className, flex ? 'flex-pressure' : '', stroke ? 'stroke' : ''].filter(Boolean).join(' ');
+  const dynamicClassName = [
+    className, 
+    flex ? 'flex-pressure' : '', 
+    stroke ? 'stroke' : '',
+    shine ? 'text-shine' : ''
+  ].filter(Boolean).join(' ');
 
   return (
     <div
@@ -248,7 +325,7 @@ export default function TextPressure({
             data-char={char}
             style={{
               display: 'inline-block',
-              color: stroke ? undefined : textColor
+              color: stroke ? undefined : (shine ? 'inherit' : textColor)
             }}
           >
             {char === ' ' ? '\u00A0' : char}

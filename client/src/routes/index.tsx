@@ -3,7 +3,6 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { gsap } from "@/lib/gsap";
-import TextPressure from "@/components/ui/text-pressure";
 import {
   ArchitectureDiagram,
   ComplianceMarquee,
@@ -267,25 +266,10 @@ function Landing() {
       <section className="relative overflow-hidden border-t border-border">
         <div className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-16">
           <Reveal>
-            <div className="eyebrow flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-              Get started
-            </div>
+            <h2 className="mt-8 font-sans text-5xl font-black tracking-tight text-balance sm:text-6xl md:text-7xl">
+              Privacy First.
+            </h2>
           </Reveal>
-          <div className="mt-8 relative w-full h-[150px] sm:h-[180px] md:h-[240px] overflow-hidden rounded-3xl bg-[#0a0b0d] p-8 flex items-center justify-center border border-border/80 shadow-2xl">
-            <TextPressure
-              text="PRIVACY FIRST"
-              flex={true}
-              alpha={false}
-              stroke={false}
-              width={true}
-              weight={true}
-              italic={true}
-              textColor="#ffffff"
-              strokeColor="#5227FF"
-              minFontSize={36}
-            />
-          </div>
           <Reveal delay={0.2}>
             <p className="mt-10 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
               Protect sensitive data with automated privacy infrastructure designed for modern

@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { gsap, ScrollTrigger } from "../lib/gsap";
+import TextPressure from "./ui/text-pressure";
 
 /* ---------- Reveal ---------- */
 export function Reveal({
@@ -1837,109 +1838,6 @@ export function Footer() {
     { t: "Company", l: ["About", "Careers", "Press", "Contact"] },
   ];
 
-  const svgRef = useRef<SVGSVGElement>(null);
-  const gradRef = useRef<SVGLinearGradientElement>(null);
-  const sweepTweenRef = useRef<gsap.core.Tween | null>(null);
-  const pointerXRef = useRef(500);
-
-  const colorPalette = ["#00f0ff", "#00d2ff", "#00b4d8", "#0082a3"];
-
-  useEffect(() => {
-    const grad = gradRef.current;
-    if (!grad) return;
-
-    // Start idle sweep: x1 from -300 to 900, x2 from 100 to 1300 across text width
-    sweepTweenRef.current = gsap.fromTo(
-      grad,
-      { attr: { x1: -300, y1: 0, x2: 100, y2: 150 } },
-      {
-        attr: { x1: 900, y1: 0, x2: 1300, y2: 150 },
-        duration: 3.5,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-      }
-    );
-
-    // Initial stop colors from current palette
-    const stops = grad.querySelectorAll("stop");
-    if (stops.length >= 7) {
-      gsap.set(stops[2], { stopColor: colorPalette[0] });
-      gsap.set(stops[3], { stopColor: "#ffffff" });
-      gsap.set(stops[4], { stopColor: colorPalette[1] });
-    }
-
-    return () => {
-      sweepTweenRef.current?.kill();
-    };
-  }, []);
-
-  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    const grad = gradRef.current;
-    if (!svg || !grad) return;
-
-    const rect = svg.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 1000;
-    const y = ((e.clientY - rect.top) / rect.height) * 150;
-    pointerXRef.current = x;
-
-    // 3D Perspective Tilt calculations relative to SVG center
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const rotateY = ((e.clientX - rect.left - centerX) / centerX) * 8; // Max 8 degrees Y axis rotation
-    const rotateX = -((e.clientY - rect.top - centerY) / centerY) * 15; // Max 15 degrees X axis rotation
-
-    // Set linearGradient coordinates to center the slanted shine bar at mouse X
-    const shineWidth = 150;
-    const slantOffset = 100;
-    grad.setAttribute("x1", `${x - shineWidth - slantOffset}`);
-    grad.setAttribute("y1", `0`);
-    grad.setAttribute("x2", `${x + shineWidth + slantOffset}`);
-    grad.setAttribute("y2", `150`);
-
-    // Apply 3D perspective tilt smoothly on hover
-    gsap.to(svg, {
-      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
-      duration: 0.3,
-      ease: "power2.out",
-      overwrite: "auto",
-    });
-  };
-
-  const onPointerEnter = (e: React.PointerEvent<SVGSVGElement>) => {
-    // Pause the idle sweep animation
-    if (sweepTweenRef.current) {
-      sweepTweenRef.current.pause();
-    }
-  };
-
-  const onPointerLeave = () => {
-    const grad = gradRef.current;
-    const svg = svgRef.current;
-    if (!grad || !svg) return;
-
-    // Reset 3D tilt smoothly
-    gsap.to(svg, {
-      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
-      duration: 0.8,
-      ease: "power2.out",
-      overwrite: "auto",
-    });
-
-    // Transition smoothly back to center, then resume idle sweep
-    gsap.to(grad, {
-      attr: { x1: 350, y1: 0, x2: 650, y2: 150 },
-      duration: 0.6,
-      ease: "power2.out",
-      onComplete: () => {
-        sweepTweenRef.current?.play();
-      },
-    });
-  };
-
-
-
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto max-w-[1400px] px-6 py-20 pb-0 md:px-10 md:pb-0">
@@ -1997,51 +1895,24 @@ export function Footer() {
       </div>
 
       <div 
-        className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-default"
+        className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-default py-8 bg-background/30"
         style={{ touchAction: "pan-y" }}
       >
-        <svg
-          ref={svgRef}
-          onPointerMove={onPointerMove}
-          onPointerEnter={onPointerEnter}
-          onPointerLeave={onPointerLeave}
-          onPointerCancel={onPointerLeave}
-          viewBox="0 0 1000 150"
-          className="w-full h-auto text-ink transition-all duration-75"
-          style={{ transformOrigin: "center", touchAction: "pan-y" }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <linearGradient
-              id="text-spotlight"
-              ref={gradRef}
-              x1="350"
-              y1="0"
-              x2="650"
-              y2="150"
-              gradientUnits="userSpaceOnUse"
-            >
-              <stop offset="0%" stopColor="currentColor" stopOpacity="0.85" />
-              <stop offset="42%" stopColor="currentColor" stopOpacity="0.85" />
-              <stop offset="48%" stopColor="#00f0ff" stopOpacity="0.95" />
-              <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
-              <stop offset="52%" stopColor="#00f0ff" stopOpacity="0.95" />
-              <stop offset="58%" stopColor="currentColor" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0.85" />
-            </linearGradient>
-          </defs>
-          <text
-            x="50%"
-            y="130"
-            textAnchor="middle"
-            className="font-sans font-black"
-            fontSize="155"
-            letterSpacing="-0.06em"
-            fill="url(#text-spotlight)"
-          >
-            SecureShare
-          </text>
-        </svg>
+        <div className="mx-auto max-w-[1400px] px-6 md:px-10">
+          <TextPressure
+            text="SecureShare"
+            flex={true}
+            alpha={false}
+            stroke={false}
+            width={true}
+            weight={true}
+            italic={true}
+            textColor="var(--color-ink)"
+            strokeColor="#5227FF"
+            minFontSize={48}
+            shine={true}
+          />
+        </div>
       </div>
     </footer>
   );
