@@ -135,6 +135,8 @@ function WorkspacePage() {
   const [renameTarget, setRenameTarget] = useState<WorkspaceFile | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  const API_BASE_URL = `http://${window.location.hostname}:4000`;
+
   // Preview States
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewTarget, setPreviewTarget] = useState<WorkspaceFile | null>(null);
@@ -174,7 +176,7 @@ function WorkspacePage() {
   };
 
   const refreshFromServer = () => {
-    fetch("http://localhost:4000/api/files")
+    fetch(`${API_BASE_URL}/api/files`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -189,7 +191,7 @@ function WorkspacePage() {
       })
       .catch(() => loadFromLocalFallback());
 
-    fetch("http://localhost:4000/api/trash")
+    fetch(`${API_BASE_URL}/api/trash`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -197,7 +199,7 @@ function WorkspacePage() {
       .then((data) => setTrashFiles(data))
       .catch(() => {});
 
-    fetch("http://localhost:4000/api/activities")
+    fetch(`${API_BASE_URL}/api/activities`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -222,7 +224,7 @@ function WorkspacePage() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:4000/api/health")
+    fetch(`${API_BASE_URL}/api/health`)
       .then((res) => {
         if (res.ok) {
           setIsServerOnline(true);
@@ -270,7 +272,7 @@ function WorkspacePage() {
   // LOG ACTIVITY HELPER
   const logActivity = (action: string, details: string, fileName?: string, icon: any = FileText) => {
     if (isServerOnline) {
-      fetch("http://localhost:4000/api/activities", {
+      fetch(`${API_BASE_URL}/api/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, details, target: fileName || "", iconName: "FileText" }),
@@ -383,7 +385,7 @@ function WorkspacePage() {
           };
 
           if (isServerOnline) {
-            fetch("http://localhost:4000/api/files", {
+            fetch(`${API_BASE_URL}/api/files`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -465,7 +467,7 @@ function WorkspacePage() {
     if (!renameTarget || !renameValue.trim()) return;
 
     if (isServerOnline) {
-      fetch(`http://localhost:4000/api/files/${renameTarget.id}/rename`, {
+      fetch(`${API_BASE_URL}/api/files/${renameTarget.id}/rename`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: renameValue }),
@@ -494,7 +496,7 @@ function WorkspacePage() {
 
   const handleDelete = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`http://localhost:4000/api/files/${file.id}`, {
+      fetch(`${API_BASE_URL}/api/files/${file.id}`, {
         method: "DELETE",
       })
         .then((res) => {
@@ -522,7 +524,7 @@ function WorkspacePage() {
 
   const handleRestore = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`http://localhost:4000/api/trash/${file.id}/restore`, {
+      fetch(`${API_BASE_URL}/api/trash/${file.id}/restore`, {
         method: "POST",
       })
         .then((res) => {
@@ -547,7 +549,7 @@ function WorkspacePage() {
 
   const handlePermanentDelete = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`http://localhost:4000/api/trash/${file.id}/permanent`, {
+      fetch(`${API_BASE_URL}/api/trash/${file.id}/permanent`, {
         method: "DELETE",
       })
         .then((res) => {
@@ -590,7 +592,7 @@ function WorkspacePage() {
     const fileContentPayload = shareFileTarget.content || "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp";
 
     if (isServerOnline) {
-      fetch(`http://localhost:4000/api/files/${shareFileTarget.id}/shares`, {
+      fetch(`${API_BASE_URL}/api/files/${shareFileTarget.id}/shares`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

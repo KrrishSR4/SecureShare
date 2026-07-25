@@ -50,9 +50,11 @@ function ShareDownloadPage() {
   const [decryptionStep, setDecryptionStep] = useState(0);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
+  const API_BASE_URL = `http://${window.location.hostname}:4000`;
+
   useEffect(() => {
     // 1. Try to fetch from server
-    fetch(`http://localhost:4000/api/shares/${shareId}`)
+    fetch(`${API_BASE_URL}/api/shares/${shareId}`)
       .then((res) => {
         if (!res.ok) throw new Error("Not found on server");
         return res.json();
@@ -127,7 +129,7 @@ function ShareDownloadPage() {
   const handleVerifyPassword = () => {
     if (!shareData) return;
 
-    fetch(`http://localhost:4000/api/shares/${shareId}/decrypt`, {
+    fetch(`${API_BASE_URL}/api/shares/${shareId}/decrypt`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
