@@ -869,8 +869,7 @@ function WorkspacePage() {
         <div className="mx-auto flex h-16 max-w-[1550px] items-center justify-between px-6 md:px-10">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2 hover:opacity-95 transition-opacity">
-              <LogoMark />
-              <span className="font-display text-xl font-medium">SecureShare</span>
+              <span className="font-display text-3xl font-medium">SecureShare</span>
             </Link>
             <div className="hidden h-5 w-px bg-border sm:block" />
             <span className="hidden font-mono text-[10px] font-bold text-muted-foreground tracking-wider uppercase sm:inline bg-mist/60 px-2 py-0.5 rounded">

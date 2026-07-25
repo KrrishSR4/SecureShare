@@ -315,8 +315,7 @@ export function Nav() {
         )}
       >
         <a href="#top" className="flex items-center gap-2">
-          <LogoMark />
-          <span className="font-display text-xl">SecureShare</span>
+          <span className="font-display text-3xl">SecureShare</span>
         </a>
         <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
           <a href="#product" className="transition-colors hover:text-ink">
