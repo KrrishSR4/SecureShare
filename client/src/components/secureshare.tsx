@@ -366,8 +366,13 @@ export function Nav() {
           <a href="#security" className="transition-colors hover:text-ink">
             Security
           </a>
-          <a href="#customers" className="transition-colors hover:text-ink">
-            Customers
+          <a
+            href="/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-ink"
+          >
+            Docs
           </a>
         </nav>
         <div className="flex items-center gap-3">
@@ -1711,6 +1716,66 @@ export function Testimonials() {
   );
 }
 
+/* ---------- DocsPreview ---------- */
+export function DocsPreview() {
+  const categories = [
+    {
+      title: "Quickstart Guide",
+      description: "Learn how to encrypt, share, and manage files in less than 5 minutes.",
+      icon: Terminal,
+      href: "/docs",
+      tag: "GETTING STARTED",
+    },
+    {
+      title: "API Reference",
+      description: "Robust REST endpoints for programmatically sharing assets and managing access.",
+      icon: Database,
+      href: "/docs",
+      tag: "REST API",
+    },
+    {
+      title: "SDKs & Libraries",
+      description: "Integrate native wrappers for React, Node.js, Python, and Go.",
+      icon: GitBranch,
+      href: "/docs",
+      tag: "DEVELOPER TOOLS",
+    },
+  ];
+
+  return (
+    <div className="grid gap-8 md:grid-cols-3">
+      {categories.map((c, i) => {
+        const Icon = c.icon;
+        return (
+          <Reveal key={i} delay={i * 0.1}>
+            <a
+              href={c.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative block h-full overflow-hidden rounded-2xl border border-border bg-card p-8 transition-all hover:-translate-y-1 hover:border-border-strong hover:shadow-lg"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-mist text-ink transition-colors group-hover:bg-ink group-hover:text-background">
+                <Icon className="h-6 w-6" />
+              </div>
+              <div className="mt-6">
+                <span className="font-mono text-[10px] font-semibold tracking-wider text-muted-foreground">
+                  {c.tag}
+                </span>
+                <h3 className="mt-2 text-xl font-medium tracking-tight">{c.title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
+              </div>
+              <div className="mt-8 flex items-center text-xs font-semibold text-ink">
+                Read documentation
+                <ArrowRight className="ml-1.5 h-3 w-3 transition-transform group-hover:translate-x-1" />
+              </div>
+            </a>
+          </Reveal>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- Section wrappers ---------- */
 export function Section({
   id,
@@ -1768,7 +1833,7 @@ export function Footer() {
     { t: "Security", l: ["Architecture", "Encryption", "Zero-Trust", "Bug Bounty", "Status"] },
     { t: "Compliance", l: ["SOC 2", "ISO 27001", "GDPR", "HIPAA", "DPA"] },
     { t: "Developers", l: ["Documentation", "API Reference", "SDKs", "Changelog", "Webhooks"] },
-    { t: "Company", l: ["About", "Customers", "Careers", "Press", "Contact"] },
+    { t: "Company", l: ["About", "Careers", "Press", "Contact"] },
   ];
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1984,7 +2049,12 @@ export function Footer() {
               <ul className="mt-4 space-y-2 text-sm">
                 {c.l.map((x) => (
                   <li key={x}>
-                    <a href="#" className="text-muted-foreground transition-colors hover:text-ink">
+                    <a
+                      href={x === "Documentation" ? "/docs" : "#"}
+                      target={x === "Documentation" ? "_blank" : undefined}
+                      rel={x === "Documentation" ? "noopener noreferrer" : undefined}
+                      className="text-muted-foreground transition-colors hover:text-ink"
+                    >
                       {x}
                     </a>
                   </li>

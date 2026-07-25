@@ -21,7 +21,7 @@ import {
   ScrollToTop,
   Section,
   Spotlight,
-  Testimonials,
+  DocsPreview,
   WordReveal,
 } from "@/components/secureshare";
 
@@ -248,18 +248,19 @@ function Landing() {
         <ArchitectureDiagram />
       </Section>
 
-      {/* ============ TESTIMONIALS ============ */}
+      {/* ============ DOCS ============ */}
       <Section
-        id="customers"
-        eyebrow="Field notes"
+        id="docs"
+        eyebrow="Documentation"
         title={
           <>
-            From security teams who{" "}
-            <span className="italic text-muted-foreground">stopped worrying</span>.
+            Engineered for developers.{" "}
+            <span className="italic text-muted-foreground">Built for security</span>.
           </>
         }
+        intro="Explore our guides, API reference, and SDKs to integrate end-to-end encryption into your existing systems."
       >
-        <Testimonials />
+        <DocsPreview />
       </Section>
 
       <section className="relative overflow-hidden border-t border-border">
