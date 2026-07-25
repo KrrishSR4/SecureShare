@@ -132,16 +132,15 @@ export function SpotlightCard({
   glowColor?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setCoords({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    el.style.setProperty("--mouse-x", `${x}px`);
+    el.style.setProperty("--mouse-y", `${y}px`);
   };
 
   return (
@@ -152,12 +151,6 @@ export function SpotlightCard({
         "group relative overflow-hidden rounded-2xl border border-border bg-surface-elevated transition-all duration-300 hover:border-ink/80",
         className,
       )}
-      style={
-        {
-          "--mouse-x": `${coords.x}px`,
-          "--mouse-y": `${coords.y}px`,
-        } as React.CSSProperties
-      }
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
@@ -169,6 +162,7 @@ export function SpotlightCard({
     </div>
   );
 }
+
 
 const MotionLink = motion(Link);
 
@@ -271,51 +265,22 @@ export function ScrollProgress() {
 
 /* ---------- Mouse Spotlight ---------- */
 export function Spotlight() {
-  const x = useMotionValue(-500);
-  const y = useMotionValue(-500);
-  useEffect(() => {
-    const move = (e: PointerEvent) => {
-      x.set(e.clientX);
-      y.set(e.clientY);
-    };
-    window.addEventListener("pointermove", move);
-    return () => window.removeEventListener("pointermove", move);
-  }, [x, y]);
-  return (
-    <motion.div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-[45] hidden lg:block"
-      style={
-        {
-          background: `radial-gradient(400px circle at var(--sx) var(--sy), color-mix(in oklch, var(--ink) 6%, transparent), transparent 60%)`,
-        } as React.CSSProperties
-      }
-    >
-      <motion.div aria-hidden style={{ x, y }} className="absolute h-px w-px" />
-      <SpotlightCSS mx={x} my={y} />
-    </motion.div>
-  );
-}
-function SpotlightCSS({
-  mx,
-  my,
-}: {
-  mx: import("framer-motion").MotionValue<number>;
-  my: import("framer-motion").MotionValue<number>;
-}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const un1 = mx.on("change", (v: number) => ref.current?.style.setProperty("--sx", `${v}px`));
-    const un2 = my.on("change", (v: number) => ref.current?.style.setProperty("--sy", `${v}px`));
-    return () => {
-      un1();
-      un2();
+    const el = ref.current;
+    if (!el) return;
+    const move = (e: PointerEvent) => {
+      el.style.setProperty("--sx", `${e.clientX}px`);
+      el.style.setProperty("--sy", `${e.clientY}px`);
     };
-  }, [mx, my]);
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => window.removeEventListener("pointermove", move);
+  }, []);
   return (
     <div
       ref={ref}
-      className="absolute inset-0"
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-[45] hidden lg:block"
       style={{
         background:
           "radial-gradient(380px circle at var(--sx, -500px) var(--sy, -500px), color-mix(in oklch, var(--ink) 5%, transparent), transparent 65%)",
@@ -323,6 +288,7 @@ function SpotlightCSS({
     />
   );
 }
+
 
 /* ---------- Nav ---------- */
 export function Nav() {
@@ -428,12 +394,36 @@ export function HeroVisualization() {
     const card = cardRef.current;
     if (!container || !card) return;
 
+    let cardRect: DOMRect | null = null;
+    let nodeCache: { el: HTMLElement; cx: number; cy: number }[] = [];
+
+    const updateCache = () => {
+      cardRect = card.getBoundingClientRect();
+      const nodes = card.querySelectorAll(".interactive-node");
+      nodeCache = Array.from(nodes).map((node) => {
+        const nodeEl = node as HTMLElement;
+        return {
+          el: nodeEl,
+          cx: nodeEl.offsetLeft + nodeEl.offsetWidth / 2,
+          cy: nodeEl.offsetTop + nodeEl.offsetHeight / 2,
+        };
+      });
+    };
+
+    const onMouseEnter = () => {
+      updateCache();
+    };
+
     const onMouseMove = (e: globalThis.MouseEvent) => {
-      const rect = card.getBoundingClientRect();
-      const x = e.clientX - rect.left - rect.width / 2;
-      const y = e.clientY - rect.top - rect.height / 2;
-      const rotateX = -(y / rect.height) * 10; // restored strong tilt (up to 10 deg)
-      const rotateY = (x / rect.width) * 10;
+      if (!cardRect) {
+        updateCache();
+      }
+      if (!cardRect) return;
+
+      const x = e.clientX - cardRect.left - cardRect.width / 2;
+      const y = e.clientY - cardRect.top - cardRect.height / 2;
+      const rotateX = -(y / cardRect.height) * 10; // restored strong tilt (up to 10 deg)
+      const rotateY = (x / cardRect.width) * 10;
 
       gsap.to(card, {
         rotateX,
@@ -444,22 +434,17 @@ export function HeroVisualization() {
       });
 
       // Mouse Proximity scaling for interactive nodes
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      const mouseX = e.clientX - cardRect.left;
+      const mouseY = e.clientY - cardRect.top;
 
-      const nodes = card.querySelectorAll(".interactive-node");
-      nodes.forEach((nodeEl: Element) => {
-        const nRect = nodeEl.getBoundingClientRect();
-        const nX = nRect.left - rect.left + nRect.width / 2;
-        const nY = nRect.top - rect.top + nRect.height / 2;
-
-        const dx = mouseX - nX;
-        const dy = mouseY - nY;
+      nodeCache.forEach((node) => {
+        const dx = mouseX - node.cx;
+        const dy = mouseY - node.cy;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < 110) {
           const scale = 1 + (1 - distance / 110) * 0.05; // scale up to 1.05x
-          gsap.to(nodeEl, {
+          gsap.to(node.el, {
             scale,
             borderColor: "var(--border-strong)",
             boxShadow: "0 8px 24px rgba(0, 0, 0, 0.05)",
@@ -467,7 +452,7 @@ export function HeroVisualization() {
             ease: "power2.out",
           });
         } else {
-          gsap.to(nodeEl, {
+          gsap.to(node.el, {
             scale: 1,
             borderColor: "var(--color-border)",
             boxShadow: "none",
@@ -486,9 +471,8 @@ export function HeroVisualization() {
         duration: 0.8,
       });
 
-      const nodes = card.querySelectorAll(".interactive-node");
-      nodes.forEach((nodeEl: Element) => {
-        gsap.to(nodeEl, {
+      nodeCache.forEach((node) => {
+        gsap.to(node.el, {
           scale: 1,
           borderColor: "var(--color-border)",
           boxShadow: "none",
@@ -496,10 +480,15 @@ export function HeroVisualization() {
           ease: "power2.out",
         });
       });
+
+      cardRect = null;
+      nodeCache = [];
     };
 
+    container.addEventListener("mouseenter", onMouseEnter);
     container.addEventListener("mousemove", onMouseMove);
     container.addEventListener("mouseleave", onMouseLeave);
+
 
     // GSAP sequential storytelling timeline (Plays ONCE on refresh/mount)
     const ctx = gsap.context(() => {
@@ -767,6 +756,7 @@ export function HeroVisualization() {
     }, card);
 
     return () => {
+      container.removeEventListener("mouseenter", onMouseEnter);
       container.removeEventListener("mousemove", onMouseMove);
       container.removeEventListener("mouseleave", onMouseLeave);
       ctx.revert();

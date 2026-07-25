@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useLenis } from "@/lib/use-lenis";
 
 import "../styles.css";
 
@@ -69,6 +70,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useLenis();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -77,3 +79,4 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
