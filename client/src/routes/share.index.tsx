@@ -881,7 +881,7 @@ function WorkspacePage() {
             <Link
               to="/docs"
               target="_blank"
-              className="text-xs font-semibold text-muted-foreground transition-colors hover:text-ink"
+              className="text-lg font-geo font-semibold text-muted-foreground transition-colors hover:text-ink"
             >
               Developer Docs
             </Link>
