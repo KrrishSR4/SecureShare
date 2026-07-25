@@ -41,8 +41,8 @@ interface TextPressureProps {
 
 export default function TextPressure({
   text = 'Compressa',
-  fontFamily = 'Roboto Flex',
-  fontUrl = 'https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&display=swap',
+  fontFamily = 'Mona Sans',
+  fontUrl = 'https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght,wdth@0,200..900,75..125;1,200..900,75..125&display=swap',
 
   width = true,
   weight = true,
@@ -74,6 +74,22 @@ export default function TextPressure({
 
   const chars = text.split('');
 
+  // Performance cache: store dimensions to avoid layout thrashing during frame loop
+  const charCentersRef = useRef<number[]>([]);
+  const maxDistRef = useRef(100);
+
+  const cacheDimensions = useCallback(() => {
+    if (!titleRef.current) return;
+    const titleRect = titleRef.current.getBoundingClientRect();
+    maxDistRef.current = titleRect.width / 2;
+
+    charCentersRef.current = spansRef.current.map((span) => {
+      if (!span) return 0;
+      const rect = span.getBoundingClientRect();
+      return rect.left + rect.width / 2;
+    });
+  }, []);
+
   // Keep track of current variation values for each span to animate smoothly
   const currentValues = useRef<{ wght: number; wdth: number; ital: number }[]>([]);
 
@@ -102,6 +118,7 @@ export default function TextPressure({
 
     const handlePointerEnter = () => {
       isHovered.current = true;
+      cacheDimensions(); // Recalculate cached locations on enter in case layout shifted
     };
     const handlePointerLeave = () => {
       isHovered.current = false;
@@ -124,14 +141,15 @@ export default function TextPressure({
       container.removeEventListener('pointerenter', handlePointerEnter);
       container.removeEventListener('pointerleave', handlePointerLeave);
     };
-  }, []);
+  }, [cacheDimensions]);
 
   const setSize = useCallback(() => {
     if (!containerRef.current || !titleRef.current) return;
 
     const { width: containerW, height: containerH } = containerRef.current.getBoundingClientRect();
 
-    let newFontSize = containerW / (chars.length / 2);
+    // Divide by chars.length * 0.9 to ensure text never overflows even when fully stretched
+    let newFontSize = containerW / (chars.length * 0.9);
     newFontSize = Math.max(newFontSize, minFontSize);
 
     setFontSize(newFontSize);
@@ -151,22 +169,24 @@ export default function TextPressure({
   }, [chars.length, minFontSize, scale]);
 
   useEffect(() => {
-    const debouncedSetSize = debounce(setSize, 100);
+    const debouncedSetSize = debounce(() => {
+      setSize();
+      setTimeout(cacheDimensions, 150);
+    }, 100);
     debouncedSetSize();
     window.addEventListener('resize', debouncedSetSize);
     return () => window.removeEventListener('resize', debouncedSetSize);
-  }, [setSize]);
+  }, [setSize, cacheDimensions]);
 
   useEffect(() => {
     let rafId: number;
     const animate = () => {
-      // Lerp mouse coordinates smoothly
-      mouseRef.current.x += (cursorRef.current.x - mouseRef.current.x) / 15;
-      mouseRef.current.y += (cursorRef.current.y - mouseRef.current.y) / 15;
+      // Lerp mouse coordinates smoothly (lerp factor 0.1 for buttery feedback)
+      mouseRef.current.x += (cursorRef.current.x - mouseRef.current.x) / 10;
+      mouseRef.current.y += (cursorRef.current.y - mouseRef.current.y) / 10;
 
       if (titleRef.current) {
-        const titleRect = titleRef.current.getBoundingClientRect();
-        const maxDist = titleRect.width / 2;
+        const maxDist = maxDistRef.current;
 
         spansRef.current.forEach((span, i) => {
           if (!span) return;
@@ -175,18 +195,14 @@ export default function TextPressure({
           let targetWght = 400;
           let targetItal = 0;
 
-          // If currently hovering, calculate target variations based on proximity
+          // Reflow-free variable animation using cached centers
           if (isHovered.current) {
-            const rect = span.getBoundingClientRect();
-            const charCenter = {
-              x: rect.x + rect.width / 2,
-              y: rect.y + rect.height / 2
-            };
+            const charCenterX = charCentersRef.current[i] || 0;
+            const dx = charCenterX - mouseRef.current.x;
+            const d = Math.abs(dx);
 
-            const d = dist(mouseRef.current, charCenter);
-
-            targetWdth = width ? Math.floor(getAttr(d, maxDist, 25, 151)) : 100;
-            targetWght = weight ? Math.floor(getAttr(d, maxDist, 100, 1000)) : 400;
+            targetWdth = width ? Math.floor(getAttr(d, maxDist, 75, 125)) : 100;
+            targetWght = weight ? Math.floor(getAttr(d, maxDist, 200, 900)) : 400;
             targetItal = italic ? parseFloat(getAttr(d, maxDist, 0, 1).toFixed(2)) : 0;
           }
 
@@ -195,9 +211,9 @@ export default function TextPressure({
             currentValues.current[i] = { wght: 400, wdth: 100, ital: 0 };
           }
           const curr = currentValues.current[i];
-          curr.wdth += (targetWdth - curr.wdth) * 0.1;
-          curr.wght += (targetWght - curr.wght) * 0.1;
-          curr.ital += (targetItal - curr.ital) * 0.1;
+          curr.wdth += (targetWdth - curr.wdth) * 0.15;
+          curr.wght += (targetWght - curr.wght) * 0.15;
+          curr.ital += (targetItal - curr.ital) * 0.15;
 
           const wght = Math.round(curr.wght);
           const wdth = Math.round(curr.wdth);
@@ -303,7 +319,6 @@ export default function TextPressure({
         className={`text-pressure-title ${dynamicClassName}`}
         style={{
           fontFamily,
-          textTransform: 'uppercase',
           fontSize: `${fontSize}px`,
           lineHeight,
           transform: `scale(1, ${scaleY})`,
