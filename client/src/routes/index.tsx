@@ -263,27 +263,6 @@ function Landing() {
         <DocsPreview />
       </Section>
 
-      <section className="relative overflow-hidden border-t border-border">
-        <div className="mx-auto max-w-[1400px] px-6 py-12 md:px-10 md:py-16">
-          <Reveal>
-            <h2 className="mt-8 font-sans text-5xl font-black tracking-tight text-balance sm:text-6xl md:text-7xl">
-              Privacy First.
-            </h2>
-          </Reveal>
-          <Reveal delay={0.2}>
-            <p className="mt-10 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
-              Protect sensitive data with automated privacy infrastructure designed for modern
-              organizations.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-3">
-              <MagneticButton variant="primary" to="/share">
-                Start Sharing <ArrowRight className="h-4 w-4" />
-              </MagneticButton>
-              <MagneticButton variant="ghost">Talk to security</MagneticButton>
-            </div>
-          </Reveal>
-        </div>
-      </section>
 
       <Footer />
       <ScrollToTop />

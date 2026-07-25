@@ -1888,8 +1888,8 @@ export function Footer() {
   return (
     <footer className="relative border-t border-border bg-surface overflow-hidden">
       <div className="relative z-10 mx-auto max-w-[1400px] px-6 pt-16 pb-[18vw] md:px-10 md:pt-20 md:pb-[17vw]">
-        <div className="flex flex-col items-start justify-between gap-4 text-xs text-muted-foreground md:flex-row md:items-center">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex w-full items-center justify-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 flex-wrap text-center">
             <span>
               © {new Date().getFullYear()}{" "}
               <a
