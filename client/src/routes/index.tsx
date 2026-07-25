@@ -120,7 +120,7 @@ function Landing() {
                 <span className="hero-title-line inline-block opacity-0">anyone.</span>
               </h1>
 
-              <p className="hero-description opacity-0 mt-6 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
+              <p className="hero-description opacity-0 mt-6 max-w-xl text-lg font-kelly text-muted-foreground text-balance md:text-xl">
                 Securely share sensitive information with built-in encryption, automated privacy
                 enforcement, compliance validation, audit trails, and enterprise-grade access
                 control.
@@ -262,7 +262,6 @@ function Landing() {
       >
         <DocsPreview />
       </Section>
-
 
       <Footer />
       <ScrollToTop />

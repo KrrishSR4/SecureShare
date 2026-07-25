@@ -1814,7 +1814,7 @@ export function Section({
           )}
           {intro && (
             <Reveal delay={0.1}>
-              <p className="mt-4 max-w-2xl text-lg text-muted-foreground text-balance">{intro}</p>
+              <p className="mt-4 max-w-2xl text-lg font-kelly text-muted-foreground text-balance">{intro}</p>
             </Reveal>
           )}
         </div>

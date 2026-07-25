@@ -9,6 +9,7 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-play: "Play", ui-sans-serif, system-ui, sans-serif;
   --font-geo: "Geo", sans-serif;
+  --font-kelly: "Kelly Slab", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
