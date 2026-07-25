@@ -1851,7 +1851,7 @@ const InteractiveWatermark = memo(() => {
   ];
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 w-full overflow-hidden pointer-events-none select-none z-0 flex justify-center pb-[2vw]">
+    <div className="absolute bottom-0 left-0 right-0 w-full overflow-hidden pointer-events-none select-none z-0 flex flex-col items-center pb-[2vw]">
       <div
         className="font-black whitespace-nowrap"
         style={{
@@ -1889,19 +1889,32 @@ export function Footer() {
     <footer className="relative border-t border-border bg-surface overflow-hidden">
       <div className="relative z-10 mx-auto max-w-[1400px] px-6 pt-16 pb-[18vw] md:px-10 md:pt-20 md:pb-[17vw]">
         <div className="flex flex-col items-start justify-between gap-4 text-xs text-muted-foreground md:flex-row md:items-center">
-          <div className="flex items-center gap-4">
-            <span>© {new Date().getFullYear()} SecureShare, Inc.</span>
-            <a href="#" className="hover:text-ink">
-              Privacy
-            </a>
-            <a href="#" className="hover:text-ink">
-              Terms
-            </a>
-            <a href="#" className="hover:text-ink">
-              DPA
-            </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>
+              © {new Date().getFullYear()}{" "}
+              <a
+                href="https://github.com/KrrishSR4/SecureShare"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-ink font-medium transition-colors"
+              >
+                SecureShare
+              </a>
+              . Built by{" "}
+              <a
+                href="https://github.com/KrrishSR4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-ink font-medium transition-colors"
+              >
+                @KrrishSR4
+              </a>
+              .
+            </span>
           </div>
-          <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
+          <div className="flex flex-col items-start md:items-end gap-2">
+            <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
+          </div>
         </div>
       </div>
       <InteractiveWatermark />
