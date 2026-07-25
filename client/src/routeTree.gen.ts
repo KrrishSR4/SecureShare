@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ShareRouteImport } from './routes/share'
-import { Route as WorkspaceRouteImport } from './routes/workspace'
 import { Route as ShareIndexRouteImport } from './routes/share.index'
 import { Route as ShareShareIdRouteImport } from './routes/share.$shareId'
 
@@ -31,11 +30,6 @@ const ShareRoute = ShareRouteImport.update({
   path: '/share',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkspaceRoute = WorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ShareIndexRoute = ShareIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -51,14 +45,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/share': typeof ShareRouteWithChildren
-  '/workspace': typeof WorkspaceRoute
   '/share/$shareId': typeof ShareShareIdRoute
   '/share/': typeof ShareIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
-  '/workspace': typeof WorkspaceRoute
   '/share/$shareId': typeof ShareShareIdRoute
   '/share': typeof ShareIndexRoute
 }
@@ -67,31 +59,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/docs': typeof DocsRoute
   '/share': typeof ShareRouteWithChildren
-  '/workspace': typeof WorkspaceRoute
   '/share/$shareId': typeof ShareShareIdRoute
   '/share/': typeof ShareIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    '/' | '/docs' | '/share' | '/workspace' | '/share/$shareId' | '/share/'
+  fullPaths: '/' | '/docs' | '/share' | '/share/$shareId' | '/share/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docs' | '/workspace' | '/share/$shareId' | '/share'
-  id:
-    | '__root__'
-    | '/'
-    | '/docs'
-    | '/share'
-    | '/workspace'
-    | '/share/$shareId'
-    | '/share/'
+  to: '/' | '/docs' | '/share/$shareId' | '/share'
+  id: '__root__' | '/' | '/docs' | '/share' | '/share/$shareId' | '/share/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRoute
   ShareRoute: typeof ShareRouteWithChildren
-  WorkspaceRoute: typeof WorkspaceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -115,13 +97,6 @@ declare module '@tanstack/react-router' {
       path: '/share'
       fullPath: '/share'
       preLoaderRoute: typeof ShareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/workspace': {
-      id: '/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof WorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share/': {
@@ -157,7 +132,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRoute,
   ShareRoute: ShareRouteWithChildren,
-  WorkspaceRoute: WorkspaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

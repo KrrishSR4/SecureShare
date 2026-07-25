@@ -51,20 +51,46 @@ function ShareDownloadPage() {
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   useEffect(() => {
-    // Load from localStorage
-    const saved = localStorage.getItem(`ss_share_${shareId}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as SharePayload;
-        setShareData(parsed);
-        if (!parsed.requirePassword) {
+    // 1. Try to fetch from server
+    fetch(`http://localhost:4000/api/shares/${shareId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Not found on server");
+        return res.json();
+      })
+      .then((data) => {
+        const payload: SharePayload = {
+          id: data.id,
+          name: data.name,
+          size: data.size,
+          type: data.type,
+          content: data.content || "",
+          requirePassword: data.requirePassword,
+          password: "", // password is authenticated on server
+          oneTimeDownload: data.oneTime,
+        };
+        setShareData(payload);
+        if (!data.requirePassword) {
           setIsVerified(true);
         }
-      } catch (e) {
-        console.error("Failed to parse share data", e);
-      }
-    }
-    setLoading(false);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.warn("Not found on server or network error, falling back to local storage", err);
+        // 2. Try to load from localStorage
+        const saved = localStorage.getItem(`ss_share_${shareId}`);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved) as SharePayload;
+            setShareData(parsed);
+            if (!parsed.requirePassword) {
+              setIsVerified(true);
+            }
+          } catch (e) {
+            console.error("Failed to parse share data", e);
+          }
+        }
+        setLoading(false);
+      });
   }, [shareId]);
 
   const getFileIcon = (fileName: string) => {
@@ -100,12 +126,33 @@ function ShareDownloadPage() {
 
   const handleVerifyPassword = () => {
     if (!shareData) return;
-    if (passwordInput === shareData.password) {
-      setIsVerified(true);
-      setPasswordError(false);
-    } else {
-      setPasswordError(true);
-    }
+
+    fetch(`http://localhost:4000/api/shares/${shareId}/decrypt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ password: passwordInput }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Incorrect password");
+        return res.json();
+      })
+      .then((data) => {
+        setShareData((prev) => prev ? { ...prev, content: data.content } : null);
+        setIsVerified(true);
+        setPasswordError(false);
+      })
+      .catch((err) => {
+        console.warn("Server validation failed, trying local storage fallback", err);
+        // Fallback
+        if (passwordInput === shareData.password) {
+          setIsVerified(true);
+          setPasswordError(false);
+        } else {
+          setPasswordError(true);
+        }
+      });
   };
 
   const handleDecryptAndDownload = () => {
