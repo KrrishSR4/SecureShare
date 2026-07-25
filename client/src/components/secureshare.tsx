@@ -1912,9 +1912,6 @@ export function Footer() {
               .
             </span>
           </div>
-          <div className="flex flex-col items-start md:items-end gap-2">
-            <div className="font-mono">v1.0.0 · Built for regulated industries.</div>
-          </div>
         </div>
       </div>
       <InteractiveWatermark />
