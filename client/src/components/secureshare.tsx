@@ -485,9 +485,9 @@ export function HeroVisualization() {
       nodeCache = [];
     };
 
-    container.addEventListener("mouseenter", onMouseEnter);
-    container.addEventListener("mousemove", onMouseMove);
-    container.addEventListener("mouseleave", onMouseLeave);
+    container.addEventListener("pointerenter", onMouseEnter);
+    container.addEventListener("pointermove", onMouseMove);
+    container.addEventListener("pointerleave", onMouseLeave);
 
 
     // GSAP sequential storytelling timeline (Plays ONCE on refresh/mount)
@@ -756,9 +756,9 @@ export function HeroVisualization() {
     }, card);
 
     return () => {
-      container.removeEventListener("mouseenter", onMouseEnter);
-      container.removeEventListener("mousemove", onMouseMove);
-      container.removeEventListener("mouseleave", onMouseLeave);
+      container.removeEventListener("pointerenter", onMouseEnter);
+      container.removeEventListener("pointermove", onMouseMove);
+      container.removeEventListener("pointerleave", onMouseLeave);
       ctx.revert();
     };
   }, []);
@@ -767,6 +767,7 @@ export function HeroVisualization() {
     <div
       ref={containerRef}
       className="relative w-full py-4 flex items-center justify-center [perspective:1000px] z-10"
+      style={{ touchAction: "pan-y" }}
     >
       <div
         ref={cardRef}
@@ -1837,9 +1838,43 @@ export function Footer() {
   ];
 
   const svgRef = useRef<SVGSVGElement>(null);
-  const gradRef = useRef<SVGRadialGradientElement>(null);
+  const gradRef = useRef<SVGLinearGradientElement>(null);
+  const sweepTweenRef = useRef<gsap.core.Tween | null>(null);
+  const pointerXRef = useRef(500);
 
-  const onMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  const colorPalette = ["#00f0ff", "#00d2ff", "#00b4d8", "#0082a3"];
+
+  useEffect(() => {
+    const grad = gradRef.current;
+    if (!grad) return;
+
+    // Start idle sweep: x1 from -300 to 900, x2 from 100 to 1300 across text width
+    sweepTweenRef.current = gsap.fromTo(
+      grad,
+      { attr: { x1: -300, y1: 0, x2: 100, y2: 150 } },
+      {
+        attr: { x1: 900, y1: 0, x2: 1300, y2: 150 },
+        duration: 3.5,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+      }
+    );
+
+    // Initial stop colors from current palette
+    const stops = grad.querySelectorAll("stop");
+    if (stops.length >= 7) {
+      gsap.set(stops[2], { stopColor: colorPalette[0] });
+      gsap.set(stops[3], { stopColor: "#ffffff" });
+      gsap.set(stops[4], { stopColor: colorPalette[1] });
+    }
+
+    return () => {
+      sweepTweenRef.current?.kill();
+    };
+  }, []);
+
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
     const grad = gradRef.current;
     if (!svg || !grad) return;
@@ -1847,6 +1882,7 @@ export function Footer() {
     const rect = svg.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 1000;
     const y = ((e.clientY - rect.top) / rect.height) * 150;
+    pointerXRef.current = x;
 
     // 3D Perspective Tilt calculations relative to SVG center
     const centerX = rect.width / 2;
@@ -1854,11 +1890,13 @@ export function Footer() {
     const rotateY = ((e.clientX - rect.left - centerX) / centerX) * 8; // Max 8 degrees Y axis rotation
     const rotateX = -((e.clientY - rect.top - centerY) / centerY) * 15; // Max 15 degrees X axis rotation
 
-    // Directly set SVG attributes
-    grad.setAttribute("cx", `${x}`);
-    grad.setAttribute("cy", `${y}`);
-    grad.setAttribute("fx", `${x}`);
-    grad.setAttribute("fy", `${y}`);
+    // Set linearGradient coordinates to center the slanted shine bar at mouse X
+    const shineWidth = 150;
+    const slantOffset = 100;
+    grad.setAttribute("x1", `${x - shineWidth - slantOffset}`);
+    grad.setAttribute("y1", `0`);
+    grad.setAttribute("x2", `${x + shineWidth + slantOffset}`);
+    grad.setAttribute("y2", `150`);
 
     // Apply 3D perspective tilt smoothly on hover
     gsap.to(svg, {
@@ -1869,29 +1907,17 @@ export function Footer() {
     });
   };
 
-  const onMouseEnter = () => {
-    const grad = gradRef.current;
-    if (!grad) return;
-
-    // Scale up the gradient spotlight radius smoothly on hover
-    gsap.to(grad, {
-      attr: { r: 250 },
-      duration: 0.45,
-      ease: "power2.out",
-    });
+  const onPointerEnter = (e: React.PointerEvent<SVGSVGElement>) => {
+    // Pause the idle sweep animation
+    if (sweepTweenRef.current) {
+      sweepTweenRef.current.pause();
+    }
   };
 
-  const onMouseLeave = () => {
+  const onPointerLeave = () => {
     const grad = gradRef.current;
     const svg = svgRef.current;
     if (!grad || !svg) return;
-
-    // Collapse the spotlight radius and return light position to center on exit
-    gsap.to(grad, {
-      attr: { cx: 500, cy: 75, fx: 500, fy: 75, r: 0 },
-      duration: 0.65,
-      ease: "power2.out",
-    });
 
     // Reset 3D tilt smoothly
     gsap.to(svg, {
@@ -1900,130 +1926,19 @@ export function Footer() {
       ease: "power2.out",
       overwrite: "auto",
     });
-  };
 
-  const colorPalette = ["#10b981", "#00d2ff", "#7928ca", "#ff007a"];
-  const colorOffsetRef = useRef(0);
-
-  const getShiftedPalette = (offset: number) => {
-    return [
-      colorPalette[(offset + 0) % colorPalette.length],
-      colorPalette[(offset + 1) % colorPalette.length],
-      colorPalette[(offset + 2) % colorPalette.length],
-      colorPalette[(offset + 3) % colorPalette.length],
-    ];
-  };
-
-  const createExplosion = (x: number, y: number, activePalette: string[]) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    // Use current rotated colors plus white hot highlight for particles
-    const colors = [...activePalette, "#ffffff"];
-    const particleCount = 18;
-
-    for (let i = 0; i < particleCount; i++) {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-
-      circle.setAttribute("cx", `${x}`);
-      circle.setAttribute("cy", `${y}`);
-      circle.setAttribute("r", `${Math.random() * 3 + 1.5}`);
-      circle.setAttribute("fill", colors[Math.floor(Math.random() * colors.length)]);
-      circle.setAttribute("opacity", "0.95");
-      circle.setAttribute("style", "pointer-events: none;");
-
-      svg.appendChild(circle);
-
-      const angle = Math.random() * Math.PI * 2;
-      const velocity = Math.random() * 110 + 30;
-      const targetX = x + Math.cos(angle) * velocity;
-      const targetY = y + Math.sin(angle) * velocity;
-
-      gsap.to(circle, {
-        attr: { cx: targetX, cy: targetY, r: 0 },
-        opacity: 0,
-        duration: Math.random() * 0.45 + 0.4,
-        ease: "power2.out",
-        onComplete: () => {
-          if (circle.parentNode) {
-            circle.parentNode.removeChild(circle);
-          }
-        },
-      });
-    }
-  };
-
-  const onMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = svgRef.current;
-    const grad = gradRef.current;
-    if (!svg || !grad) return;
-
-    // Cycle palette offset on click
-    colorOffsetRef.current = colorOffsetRef.current + 1;
-    const activePalette = getShiftedPalette(colorOffsetRef.current);
-
-    const rect = svg.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 1000;
-    const y = ((e.clientY - rect.top) / rect.height) * 150;
-
-    // 1. Compress layout on click for high-fidelity mechanical click feel
-    gsap.to(svg, {
-      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(0.94, 0.94, 0.94)",
-      duration: 0.1,
-      ease: "power2.out",
-      overwrite: "auto",
-    });
-
-    // 2. Explode the spotlight radius to instantly cover the entire text with colored light
+    // Transition smoothly back to center, then resume idle sweep
     gsap.to(grad, {
-      attr: { r: 1200 },
-      duration: 0.22,
-      ease: "power3.out",
-    });
-
-    // 3. Flash stops to white-hot neon color shockwaves based on active rotated palette
-    const stops = grad.querySelectorAll("stop");
-    if (stops.length >= 4) {
-      gsap.to(stops[0], { stopColor: "#ffffff", duration: 0.08 }); // center white hot flash
-      gsap.to(stops[1], { stopColor: activePalette[1], duration: 0.12 });
-      gsap.to(stops[2], { stopColor: activePalette[2], duration: 0.15 });
-      gsap.to(stops[3], { stopColor: activePalette[3], duration: 0.18 });
-    }
-
-    // 4. Trigger the custom neon particle explosion matching the rotated color scheme
-    createExplosion(x, y, activePalette);
-  };
-
-  const onMouseUp = () => {
-    const svg = svgRef.current;
-    const grad = gradRef.current;
-    if (!svg || !grad) return;
-
-    // 1. Spring-elastic rebound bounce
-    gsap.to(svg, {
-      transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1.02, 1.02, 1.02)",
-      duration: 0.55,
-      ease: "elastic.out(1.2, 0.4)",
-      overwrite: "auto",
-    });
-
-    // 2. Return spotlight radius to normal hover dimensions
-    gsap.to(grad, {
-      attr: { r: 250 },
-      duration: 0.5,
+      attr: { x1: 350, y1: 0, x2: 650, y2: 150 },
+      duration: 0.6,
       ease: "power2.out",
+      onComplete: () => {
+        sweepTweenRef.current?.play();
+      },
     });
-
-    // 3. Smoothly restore active rotated palette color stops (retains rotated state!)
-    const activePalette = getShiftedPalette(colorOffsetRef.current);
-    const stops = grad.querySelectorAll("stop");
-    if (stops.length >= 4) {
-      gsap.to(stops[0], { stopColor: activePalette[0], duration: 0.35 });
-      gsap.to(stops[1], { stopColor: activePalette[1], duration: 0.35 });
-      gsap.to(stops[2], { stopColor: activePalette[2], duration: 0.35 });
-      gsap.to(stops[3], { stopColor: activePalette[3], duration: 0.35 });
-    }
   };
+
+
 
   return (
     <footer className="border-t border-border bg-surface">
@@ -2081,36 +1996,39 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-pointer">
+      <div 
+        className="mt-20 w-full overflow-hidden select-none pointer-events-auto cursor-default"
+        style={{ touchAction: "pan-y" }}
+      >
         <svg
           ref={svgRef}
-          onMouseMove={onMouseMove}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          onMouseDown={onMouseDown}
-          onMouseUp={onMouseUp}
+          onPointerMove={onPointerMove}
+          onPointerEnter={onPointerEnter}
+          onPointerLeave={onPointerLeave}
+          onPointerCancel={onPointerLeave}
           viewBox="0 0 1000 150"
-          className="w-full h-auto text-ink/[0.035] transition-all duration-75"
-          style={{ transformOrigin: "center" }}
+          className="w-full h-auto text-ink transition-all duration-75"
+          style={{ transformOrigin: "center", touchAction: "pan-y" }}
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <radialGradient
+            <linearGradient
               id="text-spotlight"
               ref={gradRef}
-              cx="500"
-              cy="75"
-              r="0"
-              fx="500"
-              fy="75"
+              x1="350"
+              y1="0"
+              x2="650"
+              y2="150"
               gradientUnits="userSpaceOnUse"
             >
-              <stop offset="0%" stopColor="#10b981" />
-              <stop offset="25%" stopColor="#00d2ff" />
-              <stop offset="55%" stopColor="#7928ca" />
-              <stop offset="78%" stopColor="#ff007a" />
-              <stop offset="100%" stopColor="#111318" stopOpacity="0.035" />
-            </radialGradient>
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.85" />
+              <stop offset="42%" stopColor="currentColor" stopOpacity="0.85" />
+              <stop offset="48%" stopColor="#00f0ff" stopOpacity="0.95" />
+              <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
+              <stop offset="52%" stopColor="#00f0ff" stopOpacity="0.95" />
+              <stop offset="58%" stopColor="currentColor" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.85" />
+            </linearGradient>
           </defs>
           <text
             x="50%"

@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { gsap } from "@/lib/gsap";
+import TextPressure from "@/components/ui/text-pressure";
 import {
   ArchitectureDiagram,
   ComplianceMarquee,
@@ -271,13 +272,20 @@ function Landing() {
               Get started
             </div>
           </Reveal>
-          <h2 className="mt-8 font-display text-[14vw] leading-[0.95] tracking-tight md:text-[10vw] lg:text-[9rem]">
-            <WordReveal text="Privacy shouldn't" />
-            <br />
-            <span className="italic text-muted-foreground">
-              <WordReveal text="be optional." />
-            </span>
-          </h2>
+          <div className="mt-8 relative w-full h-[150px] sm:h-[180px] md:h-[240px] overflow-hidden rounded-3xl bg-[#0a0b0d] p-8 flex items-center justify-center border border-border/80 shadow-2xl">
+            <TextPressure
+              text="PRIVACY FIRST"
+              flex={true}
+              alpha={false}
+              stroke={false}
+              width={true}
+              weight={true}
+              italic={true}
+              textColor="#ffffff"
+              strokeColor="#5227FF"
+              minFontSize={36}
+            />
+          </div>
           <Reveal delay={0.2}>
             <p className="mt-10 max-w-xl text-lg text-muted-foreground text-balance md:text-xl">
               Protect sensitive data with automated privacy infrastructure designed for modern
