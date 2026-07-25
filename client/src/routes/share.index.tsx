@@ -86,112 +86,35 @@ interface ActivityEvent {
 }
 
 // SAMPLE INITIAL DATA
-const INITIAL_FILES: WorkspaceFile[] = [
-  {
-    id: "f-1",
-    name: "q4_financial_audit",
-    extension: "pdf",
-    size: "4.2 MB",
-    sizeBytes: 4404019,
-    uploadTime: "2 hours ago",
-    owner: "Alex Rivera",
-    status: "completed",
-    type: "application/pdf",
-    shares: [
-      {
-        id: "s-1",
-        recipientEmail: "audit@externalpartner.com",
-        url: "https://secureshare.io/s/q4_fin_audit",
-        created: "1 hour ago",
-        status: "active",
-        downloadsCount: 2,
-        downloadLimit: 5,
-      },
-    ],
-  },
-  {
-    id: "f-2",
-    name: "customer_dataset_v4",
-    extension: "csv",
-    size: "18.9 MB",
-    sizeBytes: 19818086,
-    uploadTime: "Yesterday",
-    owner: "Alex Rivera",
-    status: "completed",
-    type: "text/csv",
-    shares: [],
-  },
-  {
-    id: "f-3",
-    name: "api_encryption_spec",
-    extension: "docx",
-    size: "1.1 MB",
-    sizeBytes: 1153433,
-    uploadTime: "3 days ago",
-    owner: "Alex Rivera",
-    status: "completed",
-    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    shares: [
-      {
-        id: "s-2",
-        recipientEmail: "dev-lead@security-vendor.io",
-        url: "https://secureshare.io/s/api_spec_v2",
-        created: "2 days ago",
-        status: "expired",
-        downloadsCount: 5,
-        downloadLimit: 5,
-      },
-    ],
-  },
-  {
-    id: "f-4",
-    name: "deployment_keys",
-    extension: "zip",
-    size: "240 KB",
-    sizeBytes: 245760,
-    uploadTime: "Last week",
-    owner: "System Admin",
-    status: "completed",
-    type: "application/zip",
-    shares: [],
-  },
-];
+const INITIAL_FILES: WorkspaceFile[] = [];
+const INITIAL_ACTIVITIES: ActivityEvent[] = [];
 
-const INITIAL_ACTIVITIES: ActivityEvent[] = [
-  {
-    id: "act-1",
-    time: "1 hour ago",
-    action: "Generated Share Link",
-    details: "Created access link for q4_financial_audit.pdf for audit@externalpartner.com",
-    fileName: "q4_financial_audit.pdf",
-    icon: Share2,
-  },
-  {
-    id: "act-2",
-    time: "2 hours ago",
-    action: "Uploaded File",
-    details: "Successfully uploaded and locally encrypted q4_financial_audit.pdf",
-    fileName: "q4_financial_audit.pdf",
-    icon: Upload,
-  },
-  {
-    id: "act-3",
-    time: "Yesterday",
-    action: "Uploaded File",
-    details: "Successfully uploaded customer_dataset_v4.csv",
-    fileName: "customer_dataset_v4.csv",
-    icon: Upload,
-  },
-];
+const getIconComponent = (iconName?: string) => {
+  switch (iconName) {
+    case "Upload":
+      return Upload;
+    case "Share2":
+      return Share2;
+    case "Edit2":
+      return Edit2;
+    case "Trash2":
+      return Trash2;
+    case "RotateCcw":
+      return RotateCcw;
+    default:
+      return FileText;
+  }
+};
 
 function WorkspacePage() {
   // STATE MANAGEMENT
   const [activeTab, setActiveTab] = useState<"workspace" | "shared" | "activity" | "trash" | "settings">("workspace");
-  const [files, setFiles] = useState<WorkspaceFile[]>(INITIAL_FILES);
+  const [files, setFiles] = useState<WorkspaceFile[]>([]);
   const [uploadingQueue, setUploadingQueue] = useState<WorkspaceFile[]>([]);
-  const [activities, setActivities] = useState<ActivityEvent[]>(INITIAL_ACTIVITIES);
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [trashFiles, setTrashFiles] = useState<WorkspaceFile[]>([]);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>("f-1");
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [isServerOnline, setIsServerOnline] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -199,6 +122,7 @@ function WorkspacePage() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareFileTarget, setShareFileTarget] = useState<WorkspaceFile | null>(null);
   const [shareEmail, setShareEmail] = useState("");
+  const [shareGeneratedLink, setShareGeneratedLink] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
 
   // Share options inside Modal
@@ -222,6 +146,95 @@ function WorkspacePage() {
 
   // SELECTED FILE GETTER
   const selectedFile = files.find((f) => f.id === selectedFileId) || trashFiles.find((f) => f.id === selectedFileId) || null;
+
+  // DATA LOADERS & PERSISTENCE
+  const loadFromLocalFallback = () => {
+    setIsServerOnline(false);
+    const savedFiles = localStorage.getItem("ss_workspace_files");
+    const savedTrash = localStorage.getItem("ss_workspace_trash");
+    const savedActivities = localStorage.getItem("ss_workspace_activities");
+
+    if (savedFiles) {
+      try {
+        const parsed = JSON.parse(savedFiles) as WorkspaceFile[];
+        setFiles(parsed);
+        if (parsed.length > 0 && !selectedFileId) setSelectedFileId(parsed[0].id);
+      } catch (_) {}
+    }
+    if (savedTrash) {
+      try {
+        setTrashFiles(JSON.parse(savedTrash));
+      } catch (_) {}
+    }
+    if (savedActivities) {
+      try {
+        setActivities(JSON.parse(savedActivities));
+      } catch (_) {}
+    }
+  };
+
+  const refreshFromServer = () => {
+    fetch("http://localhost:4000/api/files")
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => {
+        setFiles(data);
+        if (data.length > 0) {
+          setSelectedFileId((prev) => prev && data.some((f: any) => f.id === prev) ? prev : data[0].id);
+        } else {
+          setSelectedFileId(null);
+        }
+      })
+      .catch(() => loadFromLocalFallback());
+
+    fetch("http://localhost:4000/api/trash")
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => setTrashFiles(data))
+      .catch(() => {});
+
+    fetch("http://localhost:4000/api/activities")
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then((data) => setActivities(data))
+      .catch(() => {});
+  };
+
+  const saveFilesLocal = (newFiles: WorkspaceFile[]) => {
+    setFiles(newFiles);
+    localStorage.setItem("ss_workspace_files", JSON.stringify(newFiles));
+  };
+
+  const saveTrashLocal = (newTrash: WorkspaceFile[]) => {
+    setTrashFiles(newTrash);
+    localStorage.setItem("ss_workspace_trash", JSON.stringify(newTrash));
+  };
+
+  const saveActivitiesLocal = (newActivities: ActivityEvent[]) => {
+    setActivities(newActivities);
+    localStorage.setItem("ss_workspace_activities", JSON.stringify(newActivities));
+  };
+
+  useEffect(() => {
+    fetch("http://localhost:4000/api/health")
+      .then((res) => {
+        if (res.ok) {
+          setIsServerOnline(true);
+          refreshFromServer();
+        } else {
+          loadFromLocalFallback();
+        }
+      })
+      .catch(() => {
+        loadFromLocalFallback();
+      });
+  }, []);
 
   // ICON SELECTOR BASED ON FILE EXTENSION
   const getFileIcon = (ext: string) => {
@@ -256,15 +269,26 @@ function WorkspacePage() {
 
   // LOG ACTIVITY HELPER
   const logActivity = (action: string, details: string, fileName?: string, icon: any = FileText) => {
-    const newEvent: ActivityEvent = {
-      id: `act-${Math.random().toString(36).substring(2, 9)}`,
-      time: "Just now",
-      action,
-      details,
-      fileName,
-      icon,
-    };
-    setActivities((prev) => [newEvent, ...prev]);
+    if (isServerOnline) {
+      fetch("http://localhost:4000/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, details, target: fileName || "", iconName: "FileText" }),
+      })
+        .then(() => refreshFromServer())
+        .catch(() => {});
+    } else {
+      const newEvent: ActivityEvent = {
+        id: `act-${Math.random().toString(36).substring(2, 9)}`,
+        time: "Just now",
+        action,
+        details,
+        fileName,
+        icon,
+      };
+      const updated = [newEvent, ...activities];
+      saveActivitiesLocal(updated);
+    }
   };
 
   // HANDLERS FOR FILE UPLOAD SIMULATION
@@ -350,7 +374,6 @@ function WorkspacePage() {
           );
           logActivity("Upload Failed", `Failed to upload ${fileInfo.name}.${fileInfo.extension}`, `${fileInfo.name}.${fileInfo.extension}`, AlertCircle);
         } else {
-          // Success
           const completedFile: WorkspaceFile = {
             ...fileInfo,
             id: `f-${Math.random().toString(36).substring(2, 9)}`,
@@ -359,11 +382,37 @@ function WorkspacePage() {
             uploadTime: "Just now",
           };
 
-          // Remove from queue, add to files list
-          setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
-          setFiles((prev) => [completedFile, ...prev]);
-          setSelectedFileId(completedFile.id);
-          logActivity("Uploaded File", `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`, `${completedFile.name}.${completedFile.extension}`, Upload);
+          if (isServerOnline) {
+            fetch("http://localhost:4000/api/files", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: fileInfo.name,
+                extension: fileInfo.extension,
+                size: fileInfo.size,
+                sizeBytes: fileInfo.sizeBytes,
+                type: fileInfo.type,
+                content: fileInfo.content,
+              }),
+            })
+              .then(() => {
+                setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
+                refreshFromServer();
+              })
+              .catch(() => {
+                setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
+                const updated = [completedFile, ...files];
+                saveFilesLocal(updated);
+                setSelectedFileId(completedFile.id);
+                logActivity("Uploaded File", `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`, `${completedFile.name}.${completedFile.extension}`, Upload);
+              });
+          } else {
+            setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
+            const updated = [completedFile, ...files];
+            saveFilesLocal(updated);
+            setSelectedFileId(completedFile.id);
+            logActivity("Uploaded File", `Successfully uploaded and verified ${completedFile.name}.${completedFile.extension}`, `${completedFile.name}.${completedFile.extension}`, Upload);
+          }
         }
       } else {
         setUploadingQueue((prev) =>
@@ -387,8 +436,17 @@ function WorkspacePage() {
 
   // ACTIONS HANDLERS
   const handleDownload = (file: WorkspaceFile) => {
+    if (!file.content) {
+      alert(`No file content available to download.`);
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = file.content;
+    link.download = `${file.name}.${file.extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     logActivity("Downloaded File", `Downloaded raw decrypted data for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Download);
-    alert(`Decrypted download triggered locally for ${file.name}.${file.extension}.`);
   };
 
   const handlePreview = (file: WorkspaceFile) => {
@@ -406,35 +464,108 @@ function WorkspacePage() {
   const handleRename = () => {
     if (!renameTarget || !renameValue.trim()) return;
 
-    setFiles((prev) =>
-      prev.map((f) => (f.id === renameTarget.id ? { ...f, name: renameValue } : f))
-    );
-    logActivity("Renamed File", `Renamed file from ${renameTarget.name} to ${renameValue}`, `${renameValue}.${renameTarget.extension}`, Edit2);
-    setRenameModalOpen(false);
-    setRenameTarget(null);
+    if (isServerOnline) {
+      fetch(`http://localhost:4000/api/files/${renameTarget.id}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: renameValue }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Rename failed");
+          refreshFromServer();
+          setRenameModalOpen(false);
+          setRenameTarget(null);
+        })
+        .catch(() => {
+          const updated = files.map((f) => (f.id === renameTarget.id ? { ...f, name: renameValue } : f));
+          saveFilesLocal(updated);
+          logActivity("Renamed File", `Renamed file from ${renameTarget.name} to ${renameValue}`, `${renameValue}.${renameTarget.extension}`, Edit2);
+          setRenameModalOpen(false);
+          setRenameTarget(null);
+        });
+    } else {
+      const updated = files.map((f) => (f.id === renameTarget.id ? { ...f, name: renameValue } : f));
+      saveFilesLocal(updated);
+      logActivity("Renamed File", `Renamed file from ${renameTarget.name} to ${renameValue}`, `${renameValue}.${renameTarget.extension}`, Edit2);
+      setRenameModalOpen(false);
+      setRenameTarget(null);
+    }
   };
 
   const handleDelete = (file: WorkspaceFile) => {
-    // Move to trash
-    setFiles((prev) => prev.filter((f) => f.id !== file.id));
-    setTrashFiles((prev) => [{ ...file, status: "completed" }, ...prev]);
-    logActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, Trash2);
-    if (selectedFileId === file.id) {
-      setSelectedFileId(null);
+    if (isServerOnline) {
+      fetch(`http://localhost:4000/api/files/${file.id}`, {
+        method: "DELETE",
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Delete failed");
+          refreshFromServer();
+          if (selectedFileId === file.id) setSelectedFileId(null);
+        })
+        .catch(() => {
+          const updatedFiles = files.filter((f) => f.id !== file.id);
+          const updatedTrash = [{ ...file, status: "completed" as const }, ...trashFiles];
+          saveFilesLocal(updatedFiles);
+          saveTrashLocal(updatedTrash);
+          logActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, Trash2);
+          if (selectedFileId === file.id) setSelectedFileId(null);
+        });
+    } else {
+      const updatedFiles = files.filter((f) => f.id !== file.id);
+      const updatedTrash = [{ ...file, status: "completed" as const }, ...trashFiles];
+      saveFilesLocal(updatedFiles);
+      saveTrashLocal(updatedTrash);
+      logActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, Trash2);
+      if (selectedFileId === file.id) setSelectedFileId(null);
     }
   };
 
   const handleRestore = (file: WorkspaceFile) => {
-    setTrashFiles((prev) => prev.filter((f) => f.id !== file.id));
-    setFiles((prev) => [file, ...prev]);
-    logActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, RotateCcw);
+    if (isServerOnline) {
+      fetch(`http://localhost:4000/api/trash/${file.id}/restore`, {
+        method: "POST",
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Restore failed");
+          refreshFromServer();
+        })
+        .catch(() => {
+          const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
+          const updatedFiles = [file, ...files];
+          saveFilesLocal(updatedFiles);
+          saveTrashLocal(updatedTrash);
+          logActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, RotateCcw);
+        });
+    } else {
+      const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
+      const updatedFiles = [file, ...files];
+      saveFilesLocal(updatedFiles);
+      saveTrashLocal(updatedTrash);
+      logActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, RotateCcw);
+    }
   };
 
   const handlePermanentDelete = (file: WorkspaceFile) => {
-    setTrashFiles((prev) => prev.filter((f) => f.id !== file.id));
-    logActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Trash2);
-    if (selectedFileId === file.id) {
-      setSelectedFileId(null);
+    if (isServerOnline) {
+      fetch(`http://localhost:4000/api/trash/${file.id}/permanent`, {
+        method: "DELETE",
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Permanent delete failed");
+          refreshFromServer();
+          if (selectedFileId === file.id) setSelectedFileId(null);
+        })
+        .catch(() => {
+          const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
+          saveTrashLocal(updatedTrash);
+          logActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Trash2);
+          if (selectedFileId === file.id) setSelectedFileId(null);
+        });
+    } else {
+      const updatedTrash = trashFiles.filter((f) => f.id !== file.id);
+      saveTrashLocal(updatedTrash);
+      logActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, Trash2);
+      if (selectedFileId === file.id) setSelectedFileId(null);
     }
   };
 
@@ -458,33 +589,28 @@ function WorkspacePage() {
 
     const fileContentPayload = shareFileTarget.content || "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp";
 
-    // Call server POST endpoint to save payload
-    fetch("http://localhost:4000/api/shares", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: `${shareFileTarget.name}.${shareFileTarget.extension}`,
-        size: shareFileTarget.size,
-        type: shareFileTarget.type,
-        content: fileContentPayload,
-        password: requirePassword ? password : "",
-        oneTime: oneTimeDownload,
-      }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Server response error");
-        return res.json();
+    if (isServerOnline) {
+      fetch(`http://localhost:4000/api/files/${shareFileTarget.id}/shares`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientEmail: shareEmail || "Public Access Link",
+          password: requirePassword ? password : "",
+          oneTime: oneTimeDownload,
+        }),
       })
-      .then((data) => {
-        const generatedLink = `${window.location.origin}/share/${data.id}`;
-        setShareGeneratedLink(generatedLink);
-
-        // Save local backup cache
-        try {
+        .then((res) => {
+          if (!res.ok) throw new Error("Server response error");
+          return res.json();
+        })
+        .then((data) => {
+          setShareGeneratedLink(data.url);
+          refreshFromServer();
+        })
+        .catch((err) => {
+          console.warn("Failed to generate share on server, falling back to local storage", err);
           const shareData = {
-            id: data.id,
+            id: randomId,
             name: `${shareFileTarget.name}.${shareFileTarget.extension}`,
             size: shareFileTarget.size,
             type: shareFileTarget.type,
@@ -493,91 +619,95 @@ function WorkspacePage() {
             password: requirePassword ? password : "",
             oneTimeDownload,
           };
-          localStorage.setItem(`ss_share_${data.id}`, JSON.stringify(shareData));
-        } catch (_) {}
 
-        // Add share record to file
-        const newShare: SharedSession = {
-          id: `s-${Math.random().toString(36).substring(2, 9)}`,
-          recipientEmail: shareEmail || "Public Access Link",
-          url: generatedLink,
-          created: "Just now",
-          status: "active",
-          downloadsCount: 0,
-          downloadLimit: 5,
-        };
+          try {
+            localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
+          } catch (error) {
+            console.warn("localStorage quota exceeded in workspace, storing fallback dummy payload instead", error);
+            const fallbackText = `Decrypted content for ${shareFileTarget.name}.${shareFileTarget.extension}. Due to browser localStorage quota limits of 5MB, the full file content could not be stored in local test environment. SecureShare enterprise releases store encrypted ciphertext blobs in Cloudflare R2 / AWS S3.`;
+            const fallbackContent = `data:text/plain;base64,${btoa(unescape(encodeURIComponent(fallbackText)))}`;
+            const fallbackShareData = {
+              ...shareData,
+              content: fallbackContent,
+              type: "text/plain",
+              name: `${shareFileTarget.name}_read_me.txt`
+            };
+            localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(fallbackShareData));
+          }
 
-        setFiles((prev) =>
-          prev.map((f) => {
-            if (f.id === shareFileTarget.id) {
-              return {
-                ...f,
-                shares: [newShare, ...f.shares],
-              };
-            }
-            return f;
-          })
-        );
-      })
-      .catch((err) => {
-        console.warn("Failed to upload to server, falling back to local storage", err);
-        // Local storage fallback
-        const shareData = {
-          id: randomId,
-          name: `${shareFileTarget.name}.${shareFileTarget.extension}`,
-          size: shareFileTarget.size,
-          type: shareFileTarget.type,
-          content: fileContentPayload,
-          requirePassword,
-          password: requirePassword ? password : "",
-          oneTimeDownload,
-        };
+          setShareGeneratedLink(fallbackLink);
 
-        try {
-          localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
-        } catch (error) {
-          console.warn("localStorage quota exceeded in workspace, storing fallback dummy payload instead", error);
-          const fallbackText = `Decrypted content for ${shareFileTarget.name}.${shareFileTarget.extension}. Due to browser localStorage quota limits of 5MB, the full file content could not be stored in local test environment. SecureShare enterprise releases store encrypted ciphertext blobs in Cloudflare R2 / AWS S3.`;
-          const fallbackContent = `data:text/plain;base64,${btoa(unescape(encodeURIComponent(fallbackText)))}`;
-          const fallbackShareData = {
-            ...shareData,
-            content: fallbackContent,
-            type: "text/plain",
-            name: `${shareFileTarget.name}_read_me.txt`
+          const newShare: SharedSession = {
+            id: `s-${Math.random().toString(36).substring(2, 9)}`,
+            recipientEmail: shareEmail || "Public Access Link",
+            url: fallbackLink,
+            created: "Just now",
+            status: "active",
+            downloadsCount: 0,
+            downloadLimit: 5,
           };
-          localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(fallbackShareData));
-        }
 
-        setShareGeneratedLink(fallbackLink);
-
-        const newShare: SharedSession = {
-          id: `s-${Math.random().toString(36).substring(2, 9)}`,
-          recipientEmail: shareEmail || "Public Access Link",
-          url: fallbackLink,
-          created: "Just now",
-          status: "active",
-          downloadsCount: 0,
-          downloadLimit: 5,
-        };
-
-        setFiles((prev) =>
-          prev.map((f) => {
+          const updatedFiles = files.map((f) => {
             if (f.id === shareFileTarget.id) {
-              return {
-                ...f,
-                shares: [newShare, ...f.shares],
-              };
+              return { ...f, shares: [newShare, ...f.shares] };
             }
             return f;
-          })
-        );
+          });
+          saveFilesLocal(updatedFiles);
+        });
+    } else {
+      const shareData = {
+        id: randomId,
+        name: `${shareFileTarget.name}.${shareFileTarget.extension}`,
+        size: shareFileTarget.size,
+        type: shareFileTarget.type,
+        content: fileContentPayload,
+        requirePassword,
+        password: requirePassword ? password : "",
+        oneTimeDownload,
+      };
+
+      try {
+        localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(shareData));
+      } catch (error) {
+        console.warn("localStorage quota exceeded in workspace, storing fallback dummy payload instead", error);
+        const fallbackText = `Decrypted content for ${shareFileTarget.name}.${shareFileTarget.extension}. Due to browser localStorage quota limits of 5MB, the full file content could not be stored in local test environment. SecureShare enterprise releases store encrypted ciphertext blobs in Cloudflare R2 / AWS S3.`;
+        const fallbackContent = `data:text/plain;base64,${btoa(unescape(encodeURIComponent(fallbackText)))}`;
+        const fallbackShareData = {
+          ...shareData,
+          content: fallbackContent,
+          type: "text/plain",
+          name: `${shareFileTarget.name}_read_me.txt`
+        };
+        localStorage.setItem(`ss_share_${randomId}`, JSON.stringify(fallbackShareData));
+      }
+
+      setShareGeneratedLink(fallbackLink);
+
+      const newShare: SharedSession = {
+        id: `s-${Math.random().toString(36).substring(2, 9)}`,
+        recipientEmail: shareEmail || "Public Access Link",
+        url: fallbackLink,
+        created: "Just now",
+        status: "active",
+        downloadsCount: 0,
+        downloadLimit: 5,
+      };
+
+      const updatedFiles = files.map((f) => {
+        if (f.id === shareFileTarget.id) {
+          return { ...f, shares: [newShare, ...f.shares] };
+        }
+        return f;
       });
+      saveFilesLocal(updatedFiles);
+    }
 
     logActivity(
       "Generated Share Link",
       `Generated access link for ${shareFileTarget.name}.${shareFileTarget.extension} shared with ${shareEmail || "public link"}`,
       `${shareFileTarget.name}.${shareFileTarget.extension}`,
-      Share2
+      "Share2"
     );
   };
 
@@ -1021,7 +1151,7 @@ function WorkspacePage() {
                 <h3 className="text-sm font-semibold text-ink mb-4">Workspace Timeline</h3>
                 <div className="space-y-4">
                   {activities.slice(0, 4).map((act) => {
-                    const ActIcon = act.icon;
+                    const ActIcon = act.icon || getIconComponent(act.iconName);
                     return (
                       <div key={act.id} className="flex gap-4 text-xs">
                         <div className="h-6 w-6 rounded-full bg-mist flex items-center justify-center text-muted-foreground shrink-0 mt-0.5">
@@ -1030,7 +1160,7 @@ function WorkspacePage() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <span className="font-semibold text-ink">{act.action}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">{act.time}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono">{act.time || act.timestamp}</span>
                           </div>
                           <p className="text-muted-foreground mt-0.5 leading-relaxed">{act.details}</p>
                         </div>
@@ -1157,7 +1287,7 @@ function WorkspacePage() {
 
               <div className="space-y-6">
                 {activities.map((act) => {
-                  const ActIcon = act.icon;
+                  const ActIcon = act.icon || getIconComponent(act.iconName);
                   return (
                     <div key={act.id} className="flex gap-4 text-xs pb-4 border-b border-border/40 last:border-0">
                       <div className="h-8 w-8 rounded-full bg-mist flex items-center justify-center text-muted-foreground shrink-0 mt-0.5">
@@ -1166,13 +1296,13 @@ function WorkspacePage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-ink text-sm">{act.action}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono">{act.time}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{act.time || act.timestamp}</span>
                         </div>
                         <p className="text-muted-foreground mt-1 leading-relaxed">{act.details}</p>
-                        {act.fileName && (
+                        {(act.fileName || act.target) && (
                           <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
                             <FileText className="h-3.5 w-3.5" />
-                            <span>{act.fileName}</span>
+                            <span>{act.fileName || act.target}</span>
                           </div>
                         )}
                       </div>
