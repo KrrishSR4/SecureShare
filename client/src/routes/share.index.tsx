@@ -1055,10 +1055,11 @@ function WorkspacePage() {
                   onDragOver={handleDrag}
                   onDragLeave={handleDrag}
                   onDrop={handleDrop}
-                  className={`relative flex flex-col items-center justify-center rounded-xl border border-dashed py-8 text-center transition-all ${
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`relative flex flex-col items-center justify-center rounded-xl border border-dashed py-8 text-center transition-all cursor-pointer ${
                     dragActive
                       ? "border-signal bg-signal/[0.01]"
-                      : "border-border hover:border-muted-foreground bg-mist/10"
+                      : "border-border hover:border-muted-foreground hover:bg-mist/30 bg-mist/10"
                   }`}
                 >
                   <input
@@ -1082,18 +1083,18 @@ function WorkspacePage() {
                   </div>
                   <h4 className="mt-3 text-xs font-semibold text-ink">
                     Drag & drop files here, or{" "}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="underline text-ink hover:text-muted-foreground font-bold"
-                    >
+                    <span className="underline text-ink hover:text-muted-foreground font-bold">
                       browse device
-                    </button>
+                    </span>
                   </h4>
-                  <p className="text-[10px] text-muted-foreground mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1 relative z-10">
                     Supports individual files (up to 50GB) or entire{" "}
                     <button
-                      onClick={() => folderInputRef.current?.click()}
-                      className="underline font-semibold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        folderInputRef.current?.click();
+                      }}
+                      className="underline font-semibold hover:text-ink"
                     >
                       folders
                     </button>

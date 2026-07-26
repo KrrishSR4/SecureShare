@@ -846,7 +846,7 @@ function DocsPage() {
 
                   <div className="mt-6 grid gap-8 lg:grid-cols-2">
                     {/* Left Column: Descriptions */}
-                    <div className="text-sm font-sans">{section.content}</div>
+                    <div className="text-sm font-kelly">{section.content}</div>
 
                     {/* Right Column: Code snippets (if available) */}
                     {section.code && (
