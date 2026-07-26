@@ -1921,39 +1921,113 @@ export function Footer() {
 /* ---------- Load sequence ---------- */
 export function LoadSequence() {
   const [done, setDone] = useState(false);
+  const [secured, setSecured] = useState(false);
+
   useEffect(() => {
-    const t = setTimeout(() => setDone(true), 1400);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setSecured(true), 1400); // 1.4s for secured state
+    const t2 = setTimeout(() => setDone(true), 2400); // 2.4 sec load time
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
+
   return (
     <motion.div
       initial={{ opacity: 1 }}
       animate={{ opacity: done ? 0 : 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       style={{ pointerEvents: done ? "none" : "auto" }}
       className="fixed inset-0 z-[100] grid place-items-center bg-background"
     >
-      <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center justify-center gap-8 px-6 text-center">
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex items-center gap-3"
+          initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ duration: 0.8, type: "spring", bounce: 0.6 }}
+          className="relative"
         >
-          <LogoMark />
-          <span className="font-display text-3xl">SecureShare</span>
-        </motion.div>
-        <div className="h-px w-40 overflow-hidden bg-border">
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: "100%" }}
-            transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-            className="h-full w-full bg-ink"
+          {/* Big Glow behind image */}
+          <div className="absolute inset-0 bg-signal/30 blur-[60px] rounded-full scale-150" />
+          <img 
+            src="/secureshare123.png" 
+            alt="SecureShare Logo" 
+            className="relative h-40 w-40 md:h-52 md:w-52 object-contain drop-shadow-2xl z-10" 
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
           />
+        </motion.div>
+        
+        <div className="space-y-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+            className="font-display text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent"
+          >
+            SecureShare
+          </motion.h1>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
+            className="font-kelly text-xl md:text-2xl text-muted-foreground tracking-wide text-balance"
+          >
+            Data sharing without trusting anyone.
+          </motion.p>
         </div>
-        <div className="eyebrow flex items-center gap-2">
-          <Sparkles className="h-3 w-3" /> establishing secure session
-        </div>
+
+        {/* Animated Sharing -> Secured Progress */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-6 relative w-64 md:w-80 h-14 flex items-center justify-between px-4 border border-border/60 bg-mist/20 rounded-full shadow-sm"
+        >
+          {/* Node 1: Sender */}
+          <div className="relative z-10 bg-background p-2 rounded-full border border-border shadow-sm">
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          {/* Connecting Line Track */}
+          <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-[2px] bg-mist overflow-hidden rounded-full">
+            {/* Fill Line */}
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: secured ? "0%" : "100%" }}
+              transition={{ 
+                duration: secured ? 0.3 : 1.4, 
+                ease: secured ? "easeOut" : "easeInOut" 
+              }}
+              className="h-full w-full bg-signal"
+            />
+          </div>
+
+          {/* Data Packet moving */}
+          <motion.div
+            initial={{ left: "15%", opacity: 0 }}
+            animate={secured ? { left: "80%", opacity: 0, scale: 0.5 } : { left: "75%", opacity: [0, 1, 1], scale: 1 }}
+            transition={{ duration: 1.4, ease: "easeInOut" }}
+            className="absolute top-1/2 -translate-y-1/2 z-20 text-signal bg-background border border-signal p-1 rounded-full drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+          >
+            <FileText className="h-3 w-3" />
+          </motion.div>
+
+          {/* Node 2: Secured State */}
+          <div className="relative z-10 flex items-center justify-center">
+            <motion.div
+              animate={{ scale: secured ? [1, 1.3, 1] : 1 }}
+              transition={{ duration: 0.5 }}
+              className={`bg-background p-2 rounded-full border shadow-sm transition-colors duration-300 ${
+                secured ? "border-signal text-signal" : "border-border text-muted-foreground"
+              }`}
+            >
+              {secured ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
     </motion.div>
   );

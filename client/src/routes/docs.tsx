@@ -635,7 +635,7 @@ function DocsPage() {
       title: "Changelog",
       icon: History,
       content: (
-        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed font-sans">
+        <div className="space-y-4 text-sm text-muted-foreground leading-relaxed font-kelly">
           <div>
             <h5 className="font-semibold text-ink">v1.1.0 (July 2026)</h5>
             <p className="text-xs text-muted-foreground">
@@ -684,7 +684,7 @@ function DocsPage() {
   );
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground grain font-sans">
+    <div className="relative min-h-screen bg-background text-foreground grain font-kelly">
       {/* Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6 md:px-10">
