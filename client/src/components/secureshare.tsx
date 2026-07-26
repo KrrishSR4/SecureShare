@@ -1992,28 +1992,28 @@ export function LoadSequence() {
           </div>
 
           {/* Connecting Line Track */}
-          <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-[2px] bg-mist overflow-hidden rounded-full">
+          <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-[2px] bg-mist rounded-full overflow-hidden">
             {/* Fill Line */}
             <motion.div
               initial={{ x: "-100%" }}
-              animate={{ x: secured ? "0%" : "100%" }}
-              transition={{ 
-                duration: secured ? 0.3 : 1.4, 
-                ease: secured ? "easeOut" : "easeInOut" 
-              }}
-              className="h-full w-full bg-signal"
+              animate={{ x: "0%" }}
+              transition={{ duration: 1.4, ease: "easeInOut" }}
+              className="h-full w-full bg-signal rounded-full"
             />
           </div>
 
-          {/* Data Packet moving */}
-          <motion.div
-            initial={{ left: "15%", opacity: 0 }}
-            animate={secured ? { left: "80%", opacity: 0, scale: 0.5 } : { left: "75%", opacity: [0, 1, 1], scale: 1 }}
-            transition={{ duration: 1.4, ease: "easeInOut" }}
-            className="absolute top-1/2 -translate-y-1/2 z-20 text-signal bg-background border border-signal p-1 rounded-full drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]"
-          >
-            <FileText className="h-3 w-3" />
-          </motion.div>
+          {/* Unclipped container for the packet to overlap correctly */}
+          <div className="absolute left-12 right-12 top-1/2 -translate-y-1/2 h-[2px] pointer-events-none">
+            {/* Data Packet moving */}
+            <motion.div
+              initial={{ left: "0%", opacity: 0, scale: 0.5 }}
+              animate={{ left: "100%", opacity: [0, 1, 1, 0], scale: [0.5, 1, 1, 0.5] }}
+              transition={{ duration: 1.4, ease: "easeInOut" }}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 text-signal bg-background border border-signal p-1 rounded-full drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+            >
+              <FileText className="h-3 w-3" />
+            </motion.div>
+          </div>
 
           {/* Node 2: Secured State */}
           <div className="relative z-10 flex items-center justify-center">
