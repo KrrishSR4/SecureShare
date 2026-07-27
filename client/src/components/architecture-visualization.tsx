@@ -100,6 +100,23 @@ const NODES = [
   },
 ];
 
+// Helper for nodes position
+const getNodePos = (i: number, innerWidth: number, rowHeight: number, isMobile: boolean) => {
+  if (isMobile) {
+    return { x: innerWidth / 2, y: i * 100 };
+  }
+  if (i < 3) {
+    // Row 1: Left to right (0, 1, 2)
+    return { x: (i / 2) * innerWidth, y: 0 };
+  } else if (i < 6) {
+    // Row 2: Right to left (3, 4, 5)
+    return { x: ((5 - i) / 2) * innerWidth, y: rowHeight };
+  } else {
+    // Row 3: Left to right (6, 7, 8)
+    return { x: ((i - 6) / 2) * innerWidth, y: rowHeight * 2 };
+  }
+};
+
 export function ArchitectureVisualization() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -129,42 +146,28 @@ export function ArchitectureVisualization() {
 
     const width = dimensions.width;
     const isMobile = width < 768;
-    const isTablet = width >= 768 && width < 1024;
     
-    const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 40 };
+    const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
     
     // We want the SVG to fit exactly inside the container without scrolling
     const innerWidth = width - margin.left - margin.right;
     const rowHeight = 160;
-    const innerHeight = isMobile ? NODES.length * 100 : rowHeight;
+    const innerHeight = isMobile ? NODES.length * 100 : rowHeight * 2;
     
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove(); 
 
     svg.attr("width", width);
-    svg.attr("height", isMobile ? innerHeight + margin.top + margin.bottom : innerHeight + margin.top + margin.bottom);
+    svg.attr("height", innerHeight + margin.top + margin.bottom);
 
     const g = svg
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Calculate node positions (Snake layout on Desktop, Vertical on Mobile)
+    // Calculate node positions
     const nodesData = NODES.map((n, i) => {
-      let x, y;
-      if (isMobile) {
-        x = innerWidth / 2;
-        y = i * 100;
-      } else {
-        if (i < 5) {
-          x = (i / 4) * innerWidth;
-          y = 0;
-        } else {
-          // Bottom row goes right to left: node 5 is at X=3/4, node 8 is at X=0
-          x = ((8 - i) / 4) * innerWidth;
-          y = rowHeight;
-        }
-      }
-      return { ...n, x, y };
+      const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
+      return { ...n, ...pos };
     });
 
     // Generate Path
@@ -172,16 +175,30 @@ export function ArchitectureVisualization() {
     if (isMobile) {
       pathString = `M ${nodesData[0].x},${nodesData[0].y} L ${nodesData[8].x},${nodesData[8].y}`;
     } else {
-      const p4 = nodesData[4]; // Top right node
-      const p5 = nodesData[5]; // Bottom right node
+      const p2 = nodesData[2]; // Row 1 Right
+      const p3 = nodesData[3]; // Row 2 Right
+      const p5 = nodesData[5]; // Row 2 Left
+      const p6 = nodesData[6]; // Row 3 Left
+      
       const r = 40; // Bend radius
-      const bendX = p4.x + 50; // Extend past the last node
+      const bendXRight = innerWidth + 50; 
+      const bendXLeft = -50; 
       
       pathString = `M ${nodesData[0].x},${nodesData[0].y} `;
-      pathString += `L ${bendX - r},${p4.y} `;
-      pathString += `Q ${bendX},${p4.y} ${bendX},${p4.y + r} `;
-      pathString += `L ${bendX},${p5.y - r} `;
-      pathString += `Q ${bendX},${p5.y} ${bendX - r},${p5.y} `;
+      
+      // Top right curve (downwards)
+      pathString += `L ${bendXRight - r},${p2.y} `;
+      pathString += `Q ${bendXRight},${p2.y} ${bendXRight},${p2.y + r} `;
+      pathString += `L ${bendXRight},${p3.y - r} `;
+      pathString += `Q ${bendXRight},${p3.y} ${bendXRight - r},${p3.y} `;
+      
+      // Bottom left curve (downwards)
+      pathString += `L ${bendXLeft + r},${p5.y} `;
+      pathString += `Q ${bendXLeft},${p5.y} ${bendXLeft},${p5.y + r} `;
+      pathString += `L ${bendXLeft},${p6.y - r} `;
+      pathString += `Q ${bendXLeft},${p6.y} ${bendXLeft + r},${p6.y} `;
+      
+      // End
       pathString += `L ${nodesData[8].x},${nodesData[8].y}`;
     }
 
@@ -247,9 +264,11 @@ export function ArchitectureVisualization() {
 
   // Re-implement animation with a ref so it reads the latest inspectedNode
   const inspectedNodeRef = useRef(inspectedNode);
+  const hoveredNodeRef = useRef(hoveredNode);
   useEffect(() => {
     inspectedNodeRef.current = inspectedNode;
-  }, [inspectedNode]);
+    hoveredNodeRef.current = hoveredNode;
+  }, [inspectedNode, hoveredNode]);
 
   useEffect(() => {
     if (!svgRef.current || dimensions.width === 0) return;
@@ -270,8 +289,8 @@ export function ArchitectureVisualization() {
       const delta = now - lastTime;
       lastTime = now;
 
-      // If paused by click, do not advance T
-      if (!inspectedNodeRef.current) {
+      // If paused by click or hover, do not advance T
+      if (!inspectedNodeRef.current && !hoveredNodeRef.current) {
          currentT += delta / 12000; // 12 seconds per loop
          if (currentT > 1) currentT = currentT % 1;
       }
@@ -290,26 +309,19 @@ export function ArchitectureVisualization() {
       });
 
       // Determine active node (if not paused)
-      if (!inspectedNodeRef.current) {
+      if (!inspectedNodeRef.current && !hoveredNodeRef.current) {
         let currentActive = null;
         
-        const margin = { top: 60, right: dimensions.width < 768 ? 40 : 80, bottom: 60, left: dimensions.width < 768 ? 40 : 40 };
-        const innerWidth = dimensions.width - margin.left - margin.right;
+        const width = dimensions.width;
+        const isMobile = width < 768;
+        const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
+        const innerWidth = width - margin.left - margin.right;
+        const rowHeight = 160;
         
         for (let i = 0; i < NODES.length; i++) {
-          let x, y;
-          if (dimensions.width < 768) {
-            x = innerWidth / 2 + margin.left;
-            y = i * 100 + margin.top;
-          } else {
-            if (i < 5) {
-              x = (i / 4) * innerWidth + margin.left;
-              y = margin.top;
-            } else {
-              x = ((8 - i) / 4) * innerWidth + margin.left;
-              y = margin.top + 160;
-            }
-          }
+          const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
+          const x = pos.x + margin.left;
+          const y = pos.y + margin.top;
           
           const dist = Math.sqrt(Math.pow(p.x + margin.left - x, 2) + Math.pow(p.y + margin.top - y, 2));
           if (dist < 50) {
@@ -327,9 +339,10 @@ export function ArchitectureVisualization() {
   const width = dimensions.width;
   const isMobile = width > 0 && width < 768;
   const isTablet = width >= 768 && width < 1024;
-  const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 40 };
+  const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
   const innerWidth = width - margin.left - margin.right;
-  const innerHeight = isMobile ? NODES.length * 100 : 160;
+  const rowHeight = 160;
+  const innerHeight = isMobile ? NODES.length * 100 : rowHeight * 2;
 
   // Actual active node for UI
   const displayNodeId = inspectedNode || activeNodeId;
@@ -350,23 +363,11 @@ export function ArchitectureVisualization() {
             className="absolute top-0 left-0 w-full h-full pointer-events-none z-10"
           >
             {NODES.map((node, i) => {
-              let x, y;
-              if (isMobile) {
-                x = innerWidth / 2;
-                y = i * 100;
-              } else {
-                if (i < 5) {
-                  x = (i / 4) * innerWidth;
-                  y = 0;
-                } else {
-                  x = ((8 - i) / 4) * innerWidth;
-                  y = 160;
-                }
-              }
-
+              const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
+              
               // Adjust for margin in HTML overlay
-              x += margin.left;
-              y += margin.top;
+              const x = pos.x + margin.left;
+              const y = pos.y + margin.top;
 
               const isActive = displayNodeId === node.id;
               const isHovered = hoveredNode === node.id;
@@ -384,6 +385,7 @@ export function ArchitectureVisualization() {
                     top: y,
                     transform: "translate(-50%, -50%)",
                     pointerEvents: "auto",
+                    zIndex: showCard ? 50 : 10,
                   }}
                   onMouseEnter={() => setHoveredNode(node.id)}
                   onMouseLeave={() => setHoveredNode(null)}
@@ -451,7 +453,7 @@ export function ArchitectureVisualization() {
                       showCard ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none",
                       isMobile 
                         ? "left-full ml-4 top-1/2 -translate-y-1/2" 
-                        : (i < 5 ? "top-full mt-4 left-1/2 -translate-x-1/2" : "bottom-full mb-4 left-1/2 -translate-x-1/2")
+                        : (i < 3 ? "top-full mt-4 left-1/2 -translate-x-1/2" : (i < 6 ? "bottom-full mb-4 left-1/2 -translate-x-1/2" : "top-full mt-4 left-1/2 -translate-x-1/2"))
                     )}
                   >
                     <div className="px-4 py-3 border-b border-border bg-mist/50">
