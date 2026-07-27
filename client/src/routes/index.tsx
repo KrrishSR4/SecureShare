@@ -11,7 +11,6 @@ import {
   HeroVisualization,
   LoadSequence,
   MagneticButton,
-  Metrics,
   Nav,
   PrivacyEngine,
   ProblemSection,
@@ -24,6 +23,8 @@ import {
   DocsPreview,
   WordReveal,
 } from "@/components/secureshare";
+
+import { ArchitectureVisualization } from "@/components/architecture-visualization";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -221,17 +222,18 @@ function Landing() {
         <FeaturesBento />
       </Section>
 
-      {/* ============ METRICS ============ */}
+      {/* ============ ARCHITECTURE VISUALIZATION ============ */}
       <Section
-        eyebrow="By the numbers"
+        eyebrow="Platform Architecture"
         title={
           <>
             Trusted with the data that{" "}
             <span className="italic text-muted-foreground">matters most</span>.
           </>
         }
+        intro="Every file passes through multiple security layers before it reaches the recipient."
       >
-        <Metrics />
+        <ArchitectureVisualization />
       </Section>
 
       {/* ============ ARCHITECTURE ============ */}
