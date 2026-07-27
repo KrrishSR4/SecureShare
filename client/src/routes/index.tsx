@@ -72,7 +72,7 @@ function HeroTiltCard() {
   };
 
   return (
-    <div style={{ perspective: 1000 }} className="w-full relative group z-10 flex items-center justify-center">
+    <div style={{ perspective: 1000 }} className="w-full relative group z-10 flex items-center justify-center lg:justify-end">
       <motion.div
         ref={ref}
         onMouseMove={handleMouseMove}
@@ -83,7 +83,7 @@ function HeroTiltCard() {
           rotateY,
           transformStyle: "preserve-3d",
         }}
-        className="w-full max-w-[600px] rounded-2xl cursor-pointer"
+        className="w-full max-w-[850px] rounded-2xl cursor-pointer"
       >
         <div
           className="w-full h-auto overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(16,185,129,0.25)] border border-border transition-all duration-300 relative"
@@ -174,7 +174,7 @@ function Landing() {
           style={{ y: heroY, opacity: heroOpacity }}
           className="mx-auto max-w-[1400px] px-6 md:px-10"
         >
-          <div className="grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+          <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-center">
             {/* Left Column (Text & CTAs) */}
             <div className="flex flex-col items-start text-left">
               <div className="hero-eyebrow opacity-0 eyebrow flex items-center gap-2">
@@ -182,7 +182,7 @@ function Landing() {
                 Privacy Infrastructure · v1.0
               </div>
 
-              <h1 className="mt-6 max-w-[15ch] font-display text-[10vw] leading-[0.92] tracking-tight md:text-[6.5vw] lg:text-[4.85rem]">
+              <h1 className="mt-6 max-w-[15ch] font-display text-[10vw] leading-[0.92] tracking-tight md:text-[6.5vw] lg:text-[5.5rem]">
                 <span className="hero-title-line inline-block opacity-0">
                   Data{" "}
                   <span className="bg-gradient-to-r from-foreground to-signal bg-clip-text text-transparent">
@@ -197,7 +197,7 @@ function Landing() {
                 <span className="hero-title-line inline-block opacity-0">anyone.</span>
               </h1>
 
-              <p className="hero-description opacity-0 mt-6 max-w-xl text-lg font-kelly text-muted-foreground text-balance md:text-xl">
+              <p className="hero-description opacity-0 mt-6 max-w-xl text-lg font-kelly text-muted-foreground text-balance md:text-2xl">
                 Securely share sensitive information with built-in encryption, automated privacy
                 enforcement, compliance validation, audit trails, and enterprise-grade access
                 control.
