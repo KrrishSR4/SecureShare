@@ -226,15 +226,42 @@ export function ArchitectureVisualization() {
       });
 
     // Stream of Data Particles
+    const particlePaths = [
+      // Folder
+      ["M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"],
+      // File
+      ["M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", "M14 2v4a2 2 0 0 0 2 2h4"],
+      // Image (secureshare.png)
+      ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"],
+      // Database (Data)
+      ["M21 5c0 1.657-4.03 3-9 3S3 6.657 3 5s4.03-3 9-3 9 1.343 9 3z", "M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5", "M3 12c0 1.66 4 3 9 3s9-1.34 9-3"]
+    ];
+
     const particlesGroup = g.append("g").attr("class", "particles");
     const numParticles = 8;
     for(let i = 0; i < numParticles; i++) {
-        particlesGroup
-            .append("circle")
-            .attr("r", 3)
-            .attr("fill", "#10b981")
-            .attr("opacity", 0.6)
-            .attr("class", `particle-${i}`);
+        const iconPaths = particlePaths[i % particlePaths.length];
+        const p = particlesGroup
+            .append("g")
+            .attr("class", `particle-${i}`)
+            .attr("opacity", 0.9);
+
+        p.append("circle")
+            .attr("r", 11)
+            .attr("fill", "#ffffff")
+            .attr("stroke", "#10b981")
+            .attr("stroke-width", 1.5)
+            .attr("filter", "drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2))");
+            
+        const icon = p.append("g")
+            .attr("fill", "none")
+            .attr("stroke", "#10b981")
+            .attr("stroke-width", 2)
+            .attr("stroke-linecap", "round")
+            .attr("stroke-linejoin", "round")
+            .attr("transform", "translate(-7.5, -7.5) scale(0.62)");
+
+        iconPaths.forEach(d => icon.append("path").attr("d", d));
     }
 
     // Main Packet
@@ -282,7 +309,7 @@ export function ArchitectureVisualization() {
     
     const packetGroup = d3.select(svgRef.current).select(".packet-group");
     const activePath = d3.select(svgRef.current).select("path:nth-child(2)");
-    const particles = d3.select(svgRef.current).selectAll(".particles circle");
+    const particles = d3.select(svgRef.current).selectAll(".particles > g");
 
     const timer = d3.timer((elapsed) => {
       const now = performance.now();
@@ -303,7 +330,7 @@ export function ArchitectureVisualization() {
 
       // Animate particles
       particles.each(function(d, i) {
-          const particleT = (currentT + (i * 0.05)) % 1;
+          const particleT = (currentT + (i * 0.125)) % 1;
           const pt = pathNode.getPointAtLength(particleT * totalLength);
           d3.select(this).attr("transform", `translate(${pt.x},${pt.y})`);
       });
@@ -369,10 +396,10 @@ export function ArchitectureVisualization() {
               const x = pos.x + margin.left;
               const y = pos.y + margin.top;
 
-              const isActive = displayNodeId === node.id;
               const isHovered = hoveredNode === node.id;
-              const isInspected = inspectedNode === node.id;
-              const showCard = isActive || isHovered || isInspected;
+              const isInspected = inspectedNode === node.id || isHovered;
+              const isActive = displayNodeId === node.id || isHovered;
+              const showCard = isActive || isInspected;
               
               const Icon = node.icon;
 
