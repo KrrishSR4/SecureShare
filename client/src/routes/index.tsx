@@ -90,7 +90,7 @@ function HeroTiltCard() {
           style={{ transform: "translateZ(40px)" }}
         >
           <img
-            src="/SS-hero.png"
+            src="/hero-SS.png"
             alt="SecureShare Dashboard"
             className="w-full h-auto object-cover"
           />
