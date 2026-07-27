@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import { useRef, useEffect } from "react";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { gsap } from "@/lib/gsap";
@@ -25,6 +25,82 @@ import {
 } from "@/components/secureshare";
 
 import { ArchitectureVisualization } from "@/components/architecture-visualization";
+
+function HeroTiltCard() {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 30 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 30 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["12deg", "-12deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-12deg", "12deg"]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+  
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / rect.width - 0.5;
+    const yPct = mouseY / rect.height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+    setTimeout(() => {
+      x.set(0);
+      y.set(0);
+    }, 400);
+  };
+
+  return (
+    <div style={{ perspective: 1000 }} className="w-full relative group z-10 flex items-center justify-center">
+      <motion.div
+        ref={ref}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        style={{
+          rotateX,
+          rotateY,
+          transformStyle: "preserve-3d",
+        }}
+        className="w-full max-w-[600px] rounded-2xl cursor-pointer"
+      >
+        <div
+          className="w-full h-auto overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(16,185,129,0.25)] border border-border transition-all duration-300 relative"
+          style={{ transform: "translateZ(40px)" }}
+        >
+          <img
+            src="/SS-hero.png"
+            alt="SecureShare Dashboard"
+            className="w-full h-auto object-cover"
+          />
+          {/* Gloss overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -150,10 +226,11 @@ function Landing() {
               </div>
             </div>
 
-            {/* Right Column (Vault Visualization) */}
+            {/* Right Column (Hero Tilt Card) */}
             <div className="hero-visual opacity-0 lg:mt-0 mt-8 w-full">
-              <HeroVisualization />
+              <HeroTiltCard />
             </div>
+
           </div>
         </motion.div>
 
