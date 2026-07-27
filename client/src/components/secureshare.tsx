@@ -1043,19 +1043,19 @@ function FlowCard({
 }) {
   return (
     <SpotlightCard
-      glowColor={tone === "warn" ? "oklch(0.55 0.22 27 / 0.08)" : undefined}
+      glowColor={tone === "warn" ? "oklch(0.55 0.22 27 / 0.08)" : "oklch(0.65 0.2 150 / 0.08)"}
       className={cn(
         "p-8",
         tone === "warn"
           ? "border-destructive/30 bg-destructive/5 hover:border-destructive/50"
-          : "border-border bg-surface-elevated",
+          : "border-signal/30 bg-signal/5 hover:border-signal/50",
       )}
     >
       <div className="mb-8 flex items-center justify-between">
         <div>
           <div className="eyebrow">{tone === "warn" ? "Before" : "After"}</div>
           <h3 className="mt-2 font-display text-3xl">{title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 text-sm font-kelly tracking-wide text-muted-foreground">{subtitle}</p>
         </div>
         {tone === "warn" ? (
           <X className="h-6 w-6 text-destructive" />
@@ -1110,7 +1110,7 @@ export function ProductDemo() {
         <div className="rounded-full border border-border bg-background px-3 py-1 font-mono text-[11px] text-muted-foreground">
           app.secureshare.io / rooms / project-atlas
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 font-kelly text-xs tracking-wide text-muted-foreground">
           <span className="h-2 w-2 rounded-full bg-signal" /> live
         </div>
       </div>
@@ -1125,7 +1125,7 @@ export function ProductDemo() {
                 <button
                   onClick={() => setStep(i)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left font-kelly text-sm tracking-wide transition-colors",
                     i === step ? "bg-ink text-background" : "text-muted-foreground hover:bg-mist",
                   )}
                 >
@@ -1149,7 +1149,7 @@ export function ProductDemo() {
           <div className="mt-8 rounded-xl border border-border p-3">
             <div className="eyebrow mb-2">Room</div>
             <div className="font-display text-lg">Project Atlas</div>
-            <div className="mt-1 text-xs text-muted-foreground">Q4 diligence · 8 members</div>
+            <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">Q4 diligence · 8 members</div>
           </div>
         </div>
 
@@ -1189,7 +1189,7 @@ function UploadPanel() {
       <div>
         <div className="eyebrow">Step 01</div>
         <h4 className="mt-2 font-display text-3xl">Upload sensitive files.</h4>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-kelly tracking-wide text-muted-foreground">
           Drag and drop. Client-side encryption begins the moment a file touches the browser.
         </p>
       </div>
@@ -1198,7 +1198,7 @@ function UploadPanel() {
           <FileText className="h-6 w-6" />
           <div>
             <div className="font-mono text-sm">customer_dataset_v4.parquet</div>
-            <div className="text-xs text-muted-foreground">2.4 GB</div>
+            <div className="font-kelly text-xs tracking-wide text-muted-foreground">2.4 GB</div>
           </div>
         </div>
         <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-mist">
@@ -1228,7 +1228,7 @@ function RecipientsPanel() {
       <div>
         <div className="eyebrow">Step 02</div>
         <h4 className="mt-2 font-display text-3xl">Select recipients.</h4>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-kelly tracking-wide text-muted-foreground">
           Identity-verified access. SSO, SAML, or magic link. Roles enforced at the file level.
         </p>
       </div>
@@ -1273,7 +1273,7 @@ function PolicyPanel() {
       <div>
         <div className="eyebrow">Step 03</div>
         <h4 className="mt-2 font-display text-3xl">Apply privacy policies.</h4>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-kelly tracking-wide text-muted-foreground">
           Reusable policies, versioned like code. Enforced at the encryption layer, not the UI.
         </p>
       </div>
@@ -1317,7 +1317,7 @@ function SharePanel() {
       <div>
         <div className="eyebrow">Step 04</div>
         <h4 className="mt-2 font-display text-3xl">Generate a secure link.</h4>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-kelly tracking-wide text-muted-foreground">
           Every link is unique per recipient. Signed, scoped, and reissued on demand.
         </p>
       </div>
@@ -1407,7 +1407,7 @@ function RevokePanel() {
       <div>
         <div className="eyebrow">Step 06</div>
         <h4 className="mt-2 font-display text-3xl">Revoke in one click.</h4>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-kelly tracking-wide text-muted-foreground">
           Access keys are cryptographically invalidated. Even downloaded files can be rendered
           unreadable.
         </p>
@@ -1463,7 +1463,7 @@ export function PrivacyEngine() {
                 </div>
                 <div className="mt-auto text-left">
                   <div className="font-display text-lg leading-tight">{s.t}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{s.d}</div>
+                  <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">{s.d}</div>
                 </div>
               </SpotlightCard>
               {i < stages.length - 1 && (
@@ -1549,7 +1549,7 @@ export function FeaturesBento() {
               />
               <div className="mt-8">
                 <h4 className="font-display text-xl leading-tight md:text-2xl">{c.title}</h4>
-                <p className="mt-2 max-w-sm text-sm text-muted-foreground">{c.desc}</p>
+                <p className="mt-2 max-w-sm text-sm font-kelly tracking-wide text-muted-foreground">{c.desc}</p>
               </div>
             </SpotlightCard>
           </Reveal>
@@ -1648,7 +1648,7 @@ export function ArchitectureDiagram() {
               </div>
               <div className="flex-1">
                 <div className="font-display text-2xl leading-none">{l.t}</div>
-                <div className="mt-1 text-sm text-muted-foreground">{l.d}</div>
+                <div className="mt-1 font-kelly text-sm tracking-wide text-muted-foreground">{l.d}</div>
               </div>
               <ArrowUpRight className="h-4 w-4 -translate-x-2 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
             </div>
@@ -1700,7 +1700,7 @@ export function Testimonials() {
               </div>
               <div>
                 <div className="text-sm font-medium">{t.n}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="font-kelly text-xs tracking-wide text-muted-foreground">
                   {t.r} · {t.c}
                 </div>
               </div>
@@ -1758,7 +1758,7 @@ export function DocsPreview() {
                   {c.tag}
                 </span>
                 <h3 className="mt-2 text-xl font-medium tracking-tight">{c.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-3 text-sm font-kelly tracking-wide leading-relaxed text-muted-foreground">
                   {c.description}
                 </p>
               </div>
@@ -1924,7 +1924,7 @@ export function LoadSequence() {
   const [secured, setSecured] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setSecured(true), 1400); // 1.4s for secured state
+    const t1 = setTimeout(() => setSecured(true), 1800); // 1.8s for secured state
     const t2 = setTimeout(() => setDone(true), 2400); // 2.4 sec load time
     return () => {
       clearTimeout(t1);
@@ -1964,7 +1964,7 @@ export function LoadSequence() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            className="font-display text-5xl md:text-7xl font-black tracking-tighter drop-shadow-sm bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent"
+            className="font-display text-[4rem] md:text-[7rem] leading-none font-black tracking-wider drop-shadow-sm bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent"
           >
             SecureShare
           </motion.h1>
@@ -1973,7 +1973,7 @@ export function LoadSequence() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-            className="font-kelly text-xl md:text-2xl text-muted-foreground tracking-wide text-balance"
+            className="font-kelly text-base md:text-xl text-muted-foreground tracking-widest text-balance pt-2"
           >
             Data sharing without trusting anyone.
           </motion.p>
@@ -1997,7 +1997,7 @@ export function LoadSequence() {
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: "0%" }}
-              transition={{ duration: 1.4, ease: "easeInOut" }}
+              transition={{ duration: 1.8, ease: "easeInOut" }}
               className="h-full w-full bg-signal rounded-full"
             />
           </div>
@@ -2008,7 +2008,7 @@ export function LoadSequence() {
             <motion.div
               initial={{ left: "0%", opacity: 0, scale: 0.5 }}
               animate={{ left: "100%", opacity: [0, 1, 1, 0], scale: [0.5, 1, 1, 0.5] }}
-              transition={{ duration: 1.4, ease: "easeInOut" }}
+              transition={{ duration: 1.8, ease: "easeInOut" }}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 text-signal bg-background border border-signal p-1 rounded-full drop-shadow-[0_0_8px_rgba(34,197,94,0.5)]"
             >
               <FileText className="h-3 w-3" />
