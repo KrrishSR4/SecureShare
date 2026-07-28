@@ -207,7 +207,12 @@ function Landing() {
                 <MagneticButton variant="primary" to="/share">
                   Start Sharing <ArrowRight className="h-4 w-4" />
                 </MagneticButton>
-                <MagneticButton variant="ghost">See how it works</MagneticButton>
+                <MagneticButton 
+                  variant="ghost"
+                  onClick={() => document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  See how it works
+                </MagneticButton>
               </div>
 
               <div className="hero-badges mt-10 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
@@ -300,18 +305,20 @@ function Landing() {
       </Section>
 
       {/* ============ ARCHITECTURE VISUALIZATION ============ */}
-      <Section
-        eyebrow="Platform Architecture"
-        title={
-          <>
-            Trusted with the data that{" "}
-            <span className="italic text-muted-foreground">matters most</span>.
-          </>
-        }
-        intro="Every file passes through multiple security layers before it reaches the recipient."
-      >
-        <ArchitectureVisualization />
-      </Section>
+      <div id="architecture">
+        <Section
+          eyebrow="Platform Architecture"
+          title={
+            <>
+              Trusted with the data that{" "}
+              <span className="italic text-muted-foreground">matters most</span>.
+            </>
+          }
+          intro="Every file passes through multiple security layers before it reaches the recipient."
+        >
+          <ArchitectureVisualization />
+        </Section>
+      </div>
 
       {/* ============ ARCHITECTURE ============ */}
       <Section
