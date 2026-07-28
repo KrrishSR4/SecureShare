@@ -390,15 +390,15 @@ export function Nav() {
                     <span className="text-xs text-muted-foreground font-normal truncate">{user.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate({ to: "/" })} className="cursor-pointer text-sm">
+                  <DropdownMenuItem onClick={() => navigate({ to: "/share" })} className="cursor-pointer text-sm">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer text-sm">
+                  <DropdownMenuItem onClick={() => navigate({ to: "/profile" })} className="cursor-pointer text-sm">
                     <UserIcon className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer text-sm">
+                  <DropdownMenuItem onClick={() => navigate({ to: "/settings" })} className="cursor-pointer text-sm">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>

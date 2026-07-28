@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as PrivacypolicyRouteImport } from './routes/privacypolicy'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth-callback'
@@ -41,6 +43,16 @@ const DocsRoute = DocsRouteImport.update({
 const PrivacypolicyRoute = PrivacypolicyRouteImport.update({
   id: '/privacypolicy',
   path: '/privacypolicy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareRoute = ShareRouteImport.update({
@@ -94,6 +106,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
   '/privacypolicy': typeof PrivacypolicyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/oauth-callback': typeof AuthOauthCallbackRoute
@@ -109,6 +123,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
   '/privacypolicy': typeof PrivacypolicyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/oauth-callback': typeof AuthOauthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -124,6 +140,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
   '/privacypolicy': typeof PrivacypolicyRoute
+  '/profile': typeof ProfileRoute
+  '/settings': typeof SettingsRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/oauth-callback': typeof AuthOauthCallbackRoute
@@ -141,6 +159,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/privacypolicy'
+    | '/profile'
+    | '/settings'
     | '/share'
     | '/auth/forgot-password'
     | '/auth/oauth-callback'
@@ -156,6 +176,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/privacypolicy'
+    | '/profile'
+    | '/settings'
     | '/auth/forgot-password'
     | '/auth/oauth-callback'
     | '/auth/reset-password'
@@ -170,6 +192,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/docs'
     | '/privacypolicy'
+    | '/profile'
+    | '/settings'
     | '/share'
     | '/auth/forgot-password'
     | '/auth/oauth-callback'
@@ -186,6 +210,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   DocsRoute: typeof DocsRoute
   PrivacypolicyRoute: typeof PrivacypolicyRoute
+  ProfileRoute: typeof ProfileRoute
+  SettingsRoute: typeof SettingsRoute
   ShareRoute: typeof ShareRouteWithChildren
 }
 
@@ -217,6 +243,20 @@ declare module '@tanstack/react-router' {
       path: '/privacypolicy'
       fullPath: '/privacypolicy'
       preLoaderRoute: typeof PrivacypolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share': {
@@ -322,6 +362,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   DocsRoute: DocsRoute,
   PrivacypolicyRoute: PrivacypolicyRoute,
+  ProfileRoute: ProfileRoute,
+  SettingsRoute: SettingsRoute,
   ShareRoute: ShareRouteWithChildren,
 }
 export const routeTree = rootRouteImport
