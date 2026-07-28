@@ -37,7 +37,7 @@ function AuthLayout() {
         <div className="relative z-10 flex justify-center items-center gap-6 text-sm text-zinc-500 w-full mt-12">
           <span>&copy; {new Date().getFullYear()} SecureShare</span>
           <Link to="/docs" className="hover:text-white transition-colors">Documentation</Link>
-          <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+          <Link to="/privacypolicy" className="hover:text-white transition-colors">Privacy Policy</Link>
         </div>
       </div>
 

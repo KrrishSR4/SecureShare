@@ -1739,10 +1739,17 @@ export function DocsPreview() {
       href: "/docs",
       tag: "REST API",
     },
+    {
+      title: "Privacy Policy",
+      description: "Read about our zero-trust architecture, data collection, and security measures.",
+      icon: ShieldCheck,
+      href: "/privacypolicy",
+      tag: "LEGAL",
+    },
   ];
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto">
+    <div className="grid gap-8 md:grid-cols-3">
       {categories.map((c, i) => {
         const Icon = c.icon;
         return (

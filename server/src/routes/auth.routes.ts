@@ -32,22 +32,20 @@ router.post("/signup", async (req: Request, res: Response): Promise<any> => {
 
     const hashedPassword = await hashPassword(password);
     
-    // Create user (unverified)
+    // Create user (verified by default for now)
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        // emailVerified is false by default in schema
+        emailVerified: true,
       },
     });
 
-    // In a real app, generate verification token and send email here
-
-    res.status(201).json({ message: "Account created successfully. Please verify your email." });
-  } catch (error) {
+    res.status(201).json({ message: "Account created successfully." });
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: (error as any).errors });
     }
     res.status(500).json({ error: "Internal server error" });
   }
@@ -65,10 +63,6 @@ router.post("/signin", async (req: Request, res: Response): Promise<any> => {
     const isMatch = await comparePasswords(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    if (!user.emailVerified) {
-      return res.status(403).json({ error: "Verify your email before continuing." });
     }
 
     const tokenPayload = { userId: user.id, role: user.role };

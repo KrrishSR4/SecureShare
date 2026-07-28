@@ -76,7 +76,7 @@ function SignUpPage() {
         email: data.email,
         password: data.password,
       });
-      toast.success("Account created successfully. Please verify your email.");
+      toast.success("Account created successfully. You can now sign in.");
       navigate({ to: "/auth/signin" });
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to create account");
