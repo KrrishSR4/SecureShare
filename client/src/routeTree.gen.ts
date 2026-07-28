@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as PrivacypolicyRouteImport } from './routes/privacypolicy'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -34,6 +35,11 @@ const AuthRoute = AuthRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacypolicyRoute = PrivacypolicyRouteImport.update({
+  id: '/privacypolicy',
+  path: '/privacypolicy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareRoute = ShareRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
+  '/privacypolicy': typeof PrivacypolicyRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
+  '/privacypolicy': typeof PrivacypolicyRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signin': typeof AuthSigninRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/docs': typeof DocsRoute
+  '/privacypolicy': typeof PrivacypolicyRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/docs'
+    | '/privacypolicy'
     | '/share'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/docs'
+    | '/privacypolicy'
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/signin'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/docs'
+    | '/privacypolicy'
     | '/share'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -161,6 +173,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   DocsRoute: typeof DocsRoute
+  PrivacypolicyRoute: typeof PrivacypolicyRoute
   ShareRoute: typeof ShareRouteWithChildren
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacypolicy': {
+      id: '/privacypolicy'
+      path: '/privacypolicy'
+      fullPath: '/privacypolicy'
+      preLoaderRoute: typeof PrivacypolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share': {
@@ -280,6 +300,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   DocsRoute: DocsRoute,
+  PrivacypolicyRoute: PrivacypolicyRoute,
   ShareRoute: ShareRouteWithChildren,
 }
 export const routeTree = rootRouteImport

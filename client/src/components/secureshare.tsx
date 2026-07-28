@@ -1739,17 +1739,10 @@ export function DocsPreview() {
       href: "/docs",
       tag: "REST API",
     },
-    {
-      title: "SDKs & Libraries",
-      description: "Integrate native wrappers for React, Node.js, Python, and Go.",
-      icon: GitBranch,
-      href: "/docs",
-      tag: "DEVELOPER TOOLS",
-    },
   ];
 
   return (
-    <div className="grid gap-8 md:grid-cols-3">
+    <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto">
       {categories.map((c, i) => {
         const Icon = c.icon;
         return (
@@ -1918,7 +1911,13 @@ export function Footer() {
               >
                 @KrrishSR4
               </a>
-              .
+              .{" "}
+              <a
+                href="/privacypolicy"
+                className="hover:text-ink font-medium transition-colors ml-2"
+              >
+                Privacy Policy
+              </a>
             </span>
           </div>
         </div>
