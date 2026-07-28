@@ -49,8 +49,7 @@ function SignInPage() {
   };
 
   const handleOAuth = (provider: "google" | "github") => {
-    // Implement OAuth later
-    toast.info(`Continue with ${provider} is coming soon!`);
+    window.location.href = `http://localhost:4000/api/auth/${provider}`;
   };
 
   return (

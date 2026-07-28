@@ -15,6 +15,7 @@ import { Route as DocsRouteImport } from './routes/docs'
 import { Route as PrivacypolicyRouteImport } from './routes/privacypolicy'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth-callback'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthSigninRouteImport } from './routes/auth.signin'
 import { Route as AuthSignupRouteImport } from './routes/auth.signup'
@@ -50,6 +51,11 @@ const ShareRoute = ShareRouteImport.update({
 const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthOauthCallbackRoute = AuthOauthCallbackRouteImport.update({
+  id: '/oauth-callback',
+  path: '/oauth-callback',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/privacypolicy': typeof PrivacypolicyRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/oauth-callback': typeof AuthOauthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/privacypolicy': typeof PrivacypolicyRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/oauth-callback': typeof AuthOauthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/privacypolicy': typeof PrivacypolicyRoute
   '/share': typeof ShareRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/oauth-callback': typeof AuthOauthCallbackRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/privacypolicy'
     | '/share'
     | '/auth/forgot-password'
+    | '/auth/oauth-callback'
     | '/auth/reset-password'
     | '/auth/signin'
     | '/auth/signup'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/privacypolicy'
     | '/auth/forgot-password'
+    | '/auth/oauth-callback'
     | '/auth/reset-password'
     | '/auth/signin'
     | '/auth/signup'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/privacypolicy'
     | '/share'
     | '/auth/forgot-password'
+    | '/auth/oauth-callback'
     | '/auth/reset-password'
     | '/auth/signin'
     | '/auth/signup'
@@ -221,6 +233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/auth/oauth-callback': {
+      id: '/auth/oauth-callback'
+      path: '/oauth-callback'
+      fullPath: '/auth/oauth-callback'
+      preLoaderRoute: typeof AuthOauthCallbackRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/auth/reset-password': {
       id: '/auth/reset-password'
       path: '/reset-password'
@@ -268,6 +287,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthOauthCallbackRoute: typeof AuthOauthCallbackRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSigninRoute: typeof AuthSigninRoute
   AuthSignupRoute: typeof AuthSignupRoute
@@ -276,6 +296,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthOauthCallbackRoute: AuthOauthCallbackRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSigninRoute: AuthSigninRoute,
   AuthSignupRoute: AuthSignupRoute,
