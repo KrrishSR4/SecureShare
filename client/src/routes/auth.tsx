@@ -15,11 +15,12 @@ function AuthLayout() {
         {/* Subtle background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center mt-8">
-          <Link to="/" className="flex flex-col items-center gap-6 mb-8 hover:scale-[1.02] transition-transform">
-            <img src="/secureshare123.png" alt="SecureShare" className="w-28 h-28 object-contain drop-shadow-2xl" />
-            <span className="font-display text-6xl tracking-tight bg-gradient-to-br from-white to-primary bg-clip-text text-transparent">
-              SecureShare
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center -mt-16">
+          <Link to="/" className="flex flex-col items-center gap-6 mb-16 hover:scale-[1.02] transition-transform">
+            <img src="/secureshare123.png" alt="SecureShare" className="w-40 h-40 object-contain drop-shadow-2xl" />
+            <span className="font-display text-[5.5rem] leading-none tracking-tight pb-2">
+              <span className="text-white">Secure</span>
+              <span className="bg-gradient-to-br from-white to-emerald-500 bg-clip-text text-transparent">Share</span>
             </span>
           </Link>
           
