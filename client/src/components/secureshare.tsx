@@ -33,8 +33,24 @@ import {
   GitBranch,
   Terminal,
   Sparkles,
+  LogOut,
+  User as UserIcon,
+  Settings,
+  LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/auth-store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useNavigate } from "@tanstack/react-router";
+import api from "@/lib/api";
 import { gsap, ScrollTrigger } from "../lib/gsap";
 import TextPressure from "./ui/text-pressure";
 
@@ -292,12 +308,23 @@ export function Spotlight() {
 /* ---------- Nav ---------- */
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const navigate = useNavigate();
+
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 24);
     on();
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (e) {}
+    logout();
+    navigate({ to: "/auth/signin" });
+  };
   return (
     <motion.header
       initial={{ y: -40, opacity: 0 }}
@@ -340,18 +367,65 @@ export function Nav() {
           </a>
         </nav>
         <div className="flex items-center gap-3">
-          <a
-            href="#"
-            className="hidden text-sm text-muted-foreground transition-colors hover:text-ink md:inline"
-          >
-            Sign in
-          </a>
-          <Link
-            to="/share"
-            className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-background transition-colors hover:bg-ink/90"
-          >
-            Start Sharing <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-          </Link>
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-3">
+              <Link
+                to="/share"
+                className="hidden md:inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-background transition-colors hover:bg-ink/90"
+              >
+                Start Sharing <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="focus:outline-none">
+                  <Avatar className="h-9 w-9 border border-border shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
+                    <AvatarImage src={user.profilePictureUrl || ""} alt={user.name || "User"} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium uppercase">
+                      {user.name ? user.name.substring(0, 2) : "US"}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span className="font-medium text-foreground">{user.name || "User"}</span>
+                    <span className="text-xs text-muted-foreground font-normal truncate">{user.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate({ to: "/" })} className="cursor-pointer text-sm">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer text-sm">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer text-sm">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10 text-sm">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <>
+              <Link
+                to="/auth/signin"
+                className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-ink md:inline"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/auth/signup"
+                className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-background transition-colors hover:bg-ink/90"
+              >
+                Sign up <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </motion.header>

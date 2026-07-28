@@ -3,20 +3,30 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  files     File[]
-  logs      AuditLog[]
+  id                       String     @id @default(uuid())
+  email                    String     @unique
+  name                     String?
+  password                 String?
+  role                     String     @default("USER")
+  oauthProvider            String?
+  oauthId                  String?
+  profilePictureUrl        String?
+  emailVerified            Boolean    @default(false)
+  verificationTokenHash    String?
+  verificationTokenExpires DateTime?
+  resetTokenHash           String?
+  resetTokenExpires        DateTime?
+  refreshTokenHash         String?
+  lastLogin                DateTime?
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+  files                    File[]
+  logs                     AuditLog[]
 }
 
 model File {
@@ -44,7 +54,4 @@ model AuditLog {
   createdAt DateTime @default(now())
 }
 
-enum Role {
-  USER
-  ADMIN
-}
+

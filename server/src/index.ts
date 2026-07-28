@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -89,6 +90,9 @@ logServerActivity("System Started", "SecureShare cloud node initialized successf
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// AUTHENTICATION ROUTES
+app.use("/api/auth", authRoutes);
 
 // Get all files
 app.get("/api/files", (req: Request, res: Response) => {
