@@ -11,29 +11,29 @@ function AuthLayout() {
   return (
     <div className="min-h-screen w-full bg-background flex">
       {/* Left Column - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex w-1/2 bg-zinc-950 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-zinc-950 p-12 flex-col relative overflow-hidden">
         {/* Subtle background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
         
-        <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 border border-white/10 shadow-lg">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <span className="font-display text-2xl tracking-tight text-white">SecureShare</span>
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center mt-8">
+          <Link to="/" className="flex flex-col items-center gap-6 mb-8 hover:scale-[1.02] transition-transform">
+            <img src="/secureshare123.png" alt="SecureShare" className="w-28 h-28 object-contain drop-shadow-2xl" />
+            <span className="font-display text-6xl tracking-tight bg-gradient-to-br from-white to-primary bg-clip-text text-transparent">
+              SecureShare
+            </span>
           </Link>
+          
+          <div className="text-center max-w-md">
+            <h1 className="font-display text-2xl text-white/90 leading-tight mb-4 tracking-tight">
+              Data sharing without trusting anyone.
+            </h1>
+            <p className="text-zinc-400 text-base leading-relaxed">
+              Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive data at any moment.
+            </p>
+          </div>
         </div>
 
-        <div className="relative z-10 max-w-md">
-          <h1 className="font-display text-4xl text-white leading-tight mb-4 tracking-tight">
-            Data sharing without trusting anyone.
-          </h1>
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            Privacy infrastructure for modern organizations. Encrypt, govern, and revoke sensitive data at any moment.
-          </p>
-        </div>
-
-        <div className="relative z-10 flex items-center gap-6 text-sm text-zinc-500">
+        <div className="relative z-10 flex justify-center items-center gap-6 text-sm text-zinc-500 w-full mt-12">
           <span>&copy; {new Date().getFullYear()} SecureShare</span>
           <Link to="/docs" className="hover:text-white transition-colors">Documentation</Link>
           <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
