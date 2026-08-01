@@ -872,9 +872,13 @@ function WorkspacePage() {
               <span className="font-display text-3xl font-medium">SecureShare</span>
             </Link>
             <div className="hidden h-5 w-px bg-border sm:block" />
-            <span className="hidden font-mono text-[10px] font-bold text-muted-foreground tracking-wider uppercase sm:inline bg-mist/60 px-2 py-0.5 rounded">
-              v1.0.0 · Core Workspace
-            </span>
+            <Link
+              to="/"
+              className="hidden items-center gap-1.5 rounded-lg bg-mist/60 px-3 py-1.5 text-xs font-bold text-muted-foreground transition-colors hover:bg-mist hover:text-ink sm:flex"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Homepage
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
