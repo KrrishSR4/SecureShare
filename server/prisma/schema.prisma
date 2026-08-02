@@ -30,17 +30,22 @@ model User {
 }
 
 model File {
-  id           String   @id @default(uuid())
-  name         String
-  size         Int
-  mimeType     String
-  r2Key        String   @unique
-  encryptedKey String?
-  ownerId      String
-  owner        User     @relation(fields: [ownerId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  logs         AuditLog[]
+  id                String   @id @default(uuid())
+  name              String
+  size              Int
+  encryptedSize     Int?
+  mimeType          String
+  r2Key             String   @unique
+  encryptedKey      String?
+  iv                String?
+  authTag           String?
+  encryptionVersion Int      @default(1)
+  keyVersion        Int      @default(1)
+  ownerId           String
+  owner             User     @relation(fields: [ownerId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  logs              AuditLog[]
 }
 
 model AuditLog {

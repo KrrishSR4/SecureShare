@@ -360,32 +360,27 @@ function WorkspacePage() {
 
       const uploadId = `up-${Math.random().toString(36).substring(2, 9)}`;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const fileContent = (e.target?.result as string) || "";
-        const fileToUpload: WorkspaceFile = {
-          id: uploadId,
-          name: baseName || file.name,
-          extension: ext,
-          size: sizeStr,
-          sizeBytes: file.size,
-          uploadTime: "Just now",
-          owner: "Alex Rivera",
-          status: "uploading",
-          progress: 0,
-          type: file.type || "application/octet-stream",
-          shares: [],
-          content: fileContent,
-        };
-
-        setUploadingQueue((prev) => [...prev, fileToUpload]);
-        simulateUploadProgress(uploadId, fileToUpload);
+      const fileToUpload: WorkspaceFile = {
+        id: uploadId,
+        name: baseName || file.name,
+        extension: ext,
+        size: sizeStr,
+        sizeBytes: file.size,
+        uploadTime: "Just now",
+        owner: "Alex Rivera",
+        status: "uploading",
+        progress: 0,
+        type: file.type || "application/octet-stream",
+        shares: [],
+        content: "",
       };
-      reader.readAsDataURL(file);
+
+      setUploadingQueue((prev) => [...prev, fileToUpload]);
+      simulateUploadProgress(uploadId, fileToUpload, file);
     });
   };
 
-  const simulateUploadProgress = (id: string, fileInfo: WorkspaceFile) => {
+  const simulateUploadProgress = (id: string, fileInfo: WorkspaceFile, rawFile?: File) => {
     let progress = 0;
     // Introduce random success/fail simulation for realistic feel
     const isDestinedToFail = Math.random() < 0.08; // 8% chance to fail for testing retry logic
@@ -414,18 +409,18 @@ function WorkspacePage() {
             uploadTime: "Just now",
           };
 
-          if (isServerOnline) {
+          if (isServerOnline && rawFile) {
+            const formData = new FormData();
+            formData.append("name", fileInfo.name);
+            formData.append("extension", fileInfo.extension);
+            formData.append("size", fileInfo.size);
+            formData.append("sizeBytes", fileInfo.sizeBytes.toString());
+            formData.append("type", fileInfo.type);
+            formData.append("file", rawFile);
+
             fetch(`${API_BASE_URL}/api/files`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: fileInfo.name,
-                extension: fileInfo.extension,
-                size: fileInfo.size,
-                sizeBytes: fileInfo.sizeBytes,
-                type: fileInfo.type,
-                content: fileInfo.content,
-              }),
+              body: formData,
             })
               .then(() => {
                 setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
@@ -478,19 +473,24 @@ function WorkspacePage() {
 
   // ACTIONS HANDLERS
   const handleDownload = (file: WorkspaceFile) => {
-    if (!file.content) {
-      alert(`No file content available to download.`);
-      return;
+    if (isServerOnline) {
+      window.open(`${API_BASE_URL}/api/files/${file.id}/download`, "_blank");
+    } else {
+      if (file.content) {
+        const link = document.createElement("a");
+        link.href = file.content;
+        link.download = `${file.name}.${file.extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert("Server is offline. Stream download unavailable.");
+        return;
+      }
     }
-    const link = document.createElement("a");
-    link.href = file.content;
-    link.download = `${file.name}.${file.extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
     logActivity(
       "Downloaded File",
-      `Downloaded raw decrypted data for ${file.name}.${file.extension}`,
+      `Downloaded decrypted data for ${file.name}.${file.extension}`,
       `${file.name}.${file.extension}`,
       Download,
     );
@@ -1637,8 +1637,24 @@ function WorkspacePage() {
                 </p>
               </div>
 
+              {/* SECURITY BADGES */}
+              <div className="flex flex-wrap gap-2 mt-3 justify-center px-4">
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-signal bg-signal/10 px-2 py-1 rounded-sm border border-signal/20">
+                  <ShieldCheck className="h-3 w-3" />
+                  AES-256 Protected
+                </span>
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2 py-1 rounded-sm border border-blue-500/20">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Integrity Verified
+                </span>
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-purple-500 bg-purple-500/10 px-2 py-1 rounded-sm border border-purple-500/20">
+                  <Lock className="h-3 w-3" />
+                  Zero Trust
+                </span>
+              </div>
+
               {/* FILE METADATA INFORMATION */}
-              <div className="rounded-2xl border border-border bg-background p-5 shadow-sm">
+              <div className="rounded-2xl border border-border bg-background p-5 shadow-sm mt-4">
                 <h4 className="font-mono text-[9px] font-bold text-muted-foreground tracking-wider uppercase mb-3">
                   FILE INFORMATION
                 </h4>
@@ -1664,7 +1680,7 @@ function WorkspacePage() {
                     <span>Status</span>
                     <span className="flex items-center gap-1 text-signal font-semibold">
                       <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-                      Client Encrypted
+                      Encrypted at Rest
                     </span>
                   </div>
                 </div>

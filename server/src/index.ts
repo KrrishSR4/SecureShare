@@ -3,6 +3,13 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
+import busboy from "busboy";
+import fs from "fs";
+import path from "path";
+import prisma from "./lib/prisma.js";
+import { EncryptionService } from "./lib/encryption.service.js";
+import crypto from "crypto";
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -100,39 +107,103 @@ app.get("/api/files", (req: Request, res: Response) => {
 });
 
 // Create new file
-app.post("/api/files", (req: Request, res: Response): any => {
-  const { name, extension, size, sizeBytes, type, content } = req.body as {
-    name?: string;
-    extension?: string;
-    size?: string;
-    sizeBytes?: number;
-    type?: string;
-    content?: string;
-  };
+app.post("/api/files", (req: Request, res: Response): void => {
+  const bb = busboy({ headers: req.headers as any });
+  let fileData: any = {};
 
-  if (!name || !content) {
-    return res.status(400).json({ error: "Name and content are required." });
+  bb.on("field", (name, val) => {
+    fileData[name] = val;
+  });
+
+  bb.on("file", async (name, fileStream, info) => {
+    const fileId = `f-${Math.random().toString(36).substring(2, 9)}`;
+    const r2Key = crypto.randomUUID(); 
+    const uploadPath = path.join(process.cwd(), "uploads", r2Key);
+    const writeStream = fs.createWriteStream(uploadPath);
+
+    try {
+      const { iv, authTag, encryptedSize } = await EncryptionService.encryptStream(fileStream, writeStream);
+
+      const dbFile = await prisma.file.create({
+        data: {
+          id: fileId,
+          name: fileData.name || info.filename,
+          size: parseInt(fileData.sizeBytes || "0", 10),
+          encryptedSize,
+          mimeType: fileData.type || info.mimeType,
+          r2Key,
+          iv,
+          authTag,
+          owner: {
+            connectOrCreate: {
+              where: { email: "alex@example.com" },
+              create: {
+                id: "mock-user-id",
+                email: "alex@example.com",
+                name: "Alex Rivera"
+              }
+            }
+          }
+        }
+      });
+
+      const newFile: WorkspaceFile = {
+        id: fileId,
+        name: fileData.name || info.filename,
+        extension: fileData.extension || info.filename.split('.').pop() || "bin",
+        size: fileData.size || "Unknown size",
+        sizeBytes: dbFile.size,
+        uploadTime: "Just now",
+        owner: "Alex Rivera",
+        status: "completed",
+        type: fileData.type || info.mimeType,
+        shares: [],
+        content: "" // No plaintext stored
+      };
+      workspaceFiles.set(fileId, newFile);
+
+      logServerActivity("Uploaded File", `Encrypted and saved ${newFile.name}.${newFile.extension}`, `${newFile.name}.${newFile.extension}`, "Upload");
+      res.json(newFile);
+    } catch (err) {
+      console.error("Encryption error:", err);
+      res.status(500).json({ error: "Failed to encrypt and store file." });
+    }
+  });
+
+  req.pipe(bb);
+});
+
+// Download decrypted file
+app.get("/api/files/:fileId/download", async (req: Request, res: Response): Promise<void> => {
+  const { fileId } = req.params;
+  
+  try {
+    const dbFile = await prisma.file.findUnique({ where: { id: fileId as string } });
+    if (!dbFile || !dbFile.iv || !dbFile.authTag) {
+      res.status(404).json({ error: "File or encryption metadata not found." });
+      return;
+    }
+
+    const filePath = path.join(process.cwd(), "uploads", dbFile.r2Key);
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ error: "Encrypted file missing on disk." });
+      return;
+    }
+
+    const readStream = fs.createReadStream(filePath);
+    
+    res.setHeader("Content-Disposition", `attachment; filename="${dbFile.name}"`);
+    res.setHeader("Content-Type", dbFile.mimeType);
+
+    await EncryptionService.decryptStream(readStream, res, dbFile.iv, dbFile.authTag);
+    
+    logServerActivity("Downloaded File", `Decrypted and streamed ${dbFile.name}`, dbFile.name, "Download");
+  } catch (err) {
+    console.error("Decryption error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to decrypt file. Integrity check might have failed." });
+    }
   }
-
-  const fileId = `f-${Math.random().toString(36).substring(2, 9)}`;
-  const newFile: WorkspaceFile = {
-    id: fileId,
-    name,
-    extension: extension || "bin",
-    size: size || "Unknown size",
-    sizeBytes: sizeBytes || 0,
-    uploadTime: "Just now",
-    owner: "Alex Rivera",
-    status: "completed",
-    type: type || "application/octet-stream",
-    shares: [],
-    content,
-  };
-
-  workspaceFiles.set(fileId, newFile);
-  logServerActivity("Uploaded File", `Uploaded ${name}.${newFile.extension} to workspace`, `${name}.${newFile.extension}`, "Upload");
-
-  res.json(newFile);
 });
 
 // Rename file

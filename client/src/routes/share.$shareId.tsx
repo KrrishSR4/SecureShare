@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -37,6 +37,7 @@ interface SharePayload {
 
 function ShareDownloadPage() {
   const { shareId } = Route.useParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [shareData, setShareData] = useState<SharePayload | null>(null);
 
@@ -202,7 +203,12 @@ function ShareDownloadPage() {
               `Payload for shareId ${shareId} shredded immediately after single retrieval.`,
             );
           }
-        }, 2800);
+
+          // Redirect to sign in/up page
+          setTimeout(() => {
+            navigate({ to: "/auth/signup" });
+          }, 3000);
+        }, 3000);
       })
       .catch((err) => {
         console.error(err);
