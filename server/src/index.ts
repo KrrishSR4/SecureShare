@@ -6,7 +6,12 @@ import authRoutes from "./routes/auth.routes.js";
 import busboy from "busboy";
 import fs from "fs";
 import path from "path";
-import prisma from "./lib/prisma.js";
+import prisma, { connectPostgres } from "./config/postgres.js";
+import { connectRedis } from "./config/redis.js";
+import { DatabaseService } from "./services/database.service.js";
+import { RedisService } from "./services/redis.service.js";
+import { CacheService } from "./services/cache.service.js";
+import { TokenService } from "./services/token.service.js";
 import { EncryptionService } from "./lib/encryption.service.js";
 import crypto from "crypto";
 
@@ -94,8 +99,16 @@ const logServerActivity = (action: string, details: string, target: string, icon
 // Seed initial log
 logServerActivity("System Started", "SecureShare cloud node initialized successfully", "System Node", "Server");
 
-app.get("/api/health", (req: Request, res: Response) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/api/health", async (req: Request, res: Response) => {
+  const dbAlive = await DatabaseService.isAlive();
+  const redisAlive = RedisService.isAlive();
+  res.json({
+    status: dbAlive ? "ok" : "error",
+    databaseConnected: dbAlive,
+    redisConnected: redisAlive,
+    cacheActive: redisAlive,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // AUTHENTICATION ROUTES
@@ -281,6 +294,14 @@ app.delete("/api/trash/:fileId/permanent", async (req: Request, res: Response): 
   });
 
   try {
+    // Find all shares for this file to invalidate their cache
+    const fileShares = await prisma.share.findMany({
+      where: { fileId }
+    });
+    for (const share of fileShares) {
+      await TokenService.invalidateShare(share.token);
+    }
+
     // Delete file from Prisma database (this cascade deletes database shares)
     await prisma.file.delete({
       where: { id: fileId }
@@ -300,16 +321,8 @@ async function validateShare(token: string) {
     return { valid: false, error: "invalid_link" };
   }
 
-  const share = await prisma.share.findUnique({
-    where: { token },
-    include: {
-      file: {
-        include: {
-          owner: true
-        }
-      }
-    }
-  });
+  // Utilizing Cache-Aside Pattern via TokenService
+  const share = await TokenService.getCachedShare(token);
 
   if (!share) {
     return { valid: false, error: "invalid_link" };
@@ -319,7 +332,7 @@ async function validateShare(token: string) {
     return { valid: false, error: "file_removed" };
   }
 
-  if (share.expiresAt && new Date() > share.expiresAt) {
+  if (share.expiresAt && new Date() > new Date(share.expiresAt)) {
     return { valid: false, error: "link_expired" };
   }
 
@@ -552,6 +565,9 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
         revoked: isLimitReached ? true : share.revoked
       }
     });
+    
+    // Invalidate the cache to ensure next request fetches updated metadata
+    await TokenService.invalidateShare(shareId);
 
     // Sync with in-memory workspaceFiles map if it exists
     const memoryFile = workspaceFiles.get(dbFile.id);
@@ -591,6 +607,12 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[server]: SecureShare backend running at http://localhost:${PORT}`);
+  try {
+    await connectPostgres();
+    await connectRedis();
+  } catch (err) {
+    console.error("Server startup connection error:", err);
+  }
 });

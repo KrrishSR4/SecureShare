@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/tokens.js";
-import prisma from "../lib/prisma.js";
+import { SessionService } from "../services/session.service.js";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -20,8 +20,8 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
   try {
     const payload = verifyAccessToken(token);
     
-    // Ensure user still exists
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    // Ensure user still exists (utilizes Cache-Aside via SessionService)
+    const user = await SessionService.getCachedUser(payload.userId);
     if (!user) {
       return res.status(401).json({ error: "User no longer exists" });
     }

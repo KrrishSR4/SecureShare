@@ -68,14 +68,76 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+import { useState } from "react";
+import api from "@/lib/api";
+import { Database, HardDrive, Zap } from "lucide-react";
+
+function DevStatusIndicator() {
+  const [status, setStatus] = useState({
+    databaseConnected: false,
+    redisConnected: false,
+    cacheActive: false,
+  });
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await api.get("/health");
+        setStatus({
+          databaseConnected: res.data.databaseConnected,
+          redisConnected: res.data.redisConnected,
+          cacheActive: res.data.cacheActive,
+        });
+      } catch (err) {
+        setStatus({
+          databaseConnected: false,
+          redisConnected: false,
+          cacheActive: false,
+        });
+      }
+    };
+    fetchHealth();
+    const intv = setInterval(fetchHealth, 10000);
+    return () => clearInterval(intv);
+  }, []);
+
+  if (!import.meta.env.DEV) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 bg-background/80 backdrop-blur-md p-3 rounded-xl border border-border shadow-lg text-xs font-medium">
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${status.databaseConnected ? "bg-green-500 shadow-green-500/50" : "bg-red-500 shadow-red-500/50"}`}
+        />
+        <Database className="w-3 h-3 text-muted-foreground" />
+        <span>PostgreSQL</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${status.redisConnected ? "bg-green-500 shadow-green-500/50" : "bg-red-500 shadow-red-500/50"}`}
+        />
+        <HardDrive className="w-3 h-3 text-muted-foreground" />
+        <span>Redis Cluster</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${status.cacheActive ? "bg-green-500 shadow-green-500/50" : "bg-yellow-500 shadow-yellow-500/50"}`}
+        />
+        <Zap className="w-3 h-3 text-muted-foreground" />
+        <span>Cache Active</span>
+      </div>
+    </div>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useLenis();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <DevStatusIndicator />
     </QueryClientProvider>
   );
 }
