@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,8 +15,8 @@ import {
   FileArchive,
   FileCode,
   RefreshCw,
-  Eye,
-  Check,
+  Clock,
+  Trash2,
 } from "lucide-react";
 import { LogoMark } from "@/components/secureshare";
 
@@ -33,13 +33,24 @@ interface SharePayload {
   requirePassword?: boolean;
   password?: string;
   oneTimeDownload?: boolean;
+  expiresAt?: string;
+  downloadsCount: number;
+  downloadsLimit: number;
+  remainingDownloads: number;
+  createdBy?: string;
+  createdAt?: string;
 }
+
+const API_BASE_URL =
+  typeof window !== "undefined"
+    ? `http://${window.location.hostname}:4000`
+    : "http://localhost:4000";
 
 function ShareDownloadPage() {
   const { shareId } = Route.useParams();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [shareData, setShareData] = useState<SharePayload | null>(null);
+  const [errorState, setErrorState] = useState<string | null>(null);
 
   // Password Verification State
   const [passwordInput, setPasswordInput] = useState("");
@@ -51,13 +62,14 @@ function ShareDownloadPage() {
   const [decryptionStep, setDecryptionStep] = useState(0);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
-  const API_BASE_URL = `http://${window.location.hostname}:4000`;
-
   useEffect(() => {
     // 1. Try to fetch from server
     fetch(`${API_BASE_URL}/api/shares/${shareId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Not found on server");
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "invalid_link");
+        }
         return res.json();
       })
       .then((data) => {
@@ -66,10 +78,16 @@ function ShareDownloadPage() {
           name: data.name,
           size: data.size,
           type: data.type,
-          content: data.content || "",
+          content: "",
           requirePassword: data.requirePassword,
-          password: "", // password is authenticated on server
+          password: "",
           oneTimeDownload: data.oneTime,
+          expiresAt: data.expiresAt,
+          downloadsCount: data.downloadsCount,
+          downloadsLimit: data.downloadsLimit,
+          remainingDownloads: data.remainingDownloads,
+          createdBy: data.createdBy,
+          createdAt: data.createdAt,
         };
         setShareData(payload);
         if (!data.requirePassword) {
@@ -78,8 +96,9 @@ function ShareDownloadPage() {
         setLoading(false);
       })
       .catch((err) => {
-        console.warn("Not found on server or network error, falling back to local storage", err);
-        // 2. Try to load from localStorage
+        console.warn("Not found on server or network error, checking local storage fallback", err);
+
+        // 2. Try to load from localStorage as fallback
         const saved = localStorage.getItem(`ss_share_${shareId}`);
         if (saved) {
           try {
@@ -88,13 +107,16 @@ function ShareDownloadPage() {
             if (!parsed.requirePassword) {
               setIsVerified(true);
             }
+            setLoading(false);
+            return;
           } catch (e) {
-            console.error("Failed to parse share data", e);
+            console.error("Failed to parse local share data", e);
           }
         }
+
+        setErrorState(err.message || "invalid_link");
         setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shareId]);
 
   const getFileIcon = (fileName: string) => {
@@ -142,20 +164,27 @@ function ShareDownloadPage() {
         if (!res.ok) throw new Error("Incorrect password");
         return res.json();
       })
-      .then((data) => {
-        setShareData((prev) => (prev ? { ...prev, content: data.content } : null));
+      .then(() => {
         setIsVerified(true);
         setPasswordError(false);
       })
       .catch((err) => {
         console.warn("Server validation failed, trying local storage fallback", err);
-        // Fallback
-        if (passwordInput === shareData.password) {
-          setIsVerified(true);
-          setPasswordError(false);
-        } else {
-          setPasswordError(true);
+        // Local Fallback
+        const saved = localStorage.getItem(`ss_share_${shareId}`);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved) as SharePayload;
+            if (passwordInput === parsed.password) {
+              setIsVerified(true);
+              setPasswordError(false);
+              return;
+            }
+          } catch (e) {
+            console.error(e);
+          }
         }
+        setPasswordError(true);
       });
   };
 
@@ -165,56 +194,101 @@ function ShareDownloadPage() {
     setIsDecrypting(true);
     setDecryptionStep(0);
 
-    const fetchContentPromise = !shareData.content
-      ? fetch(`${API_BASE_URL}/api/shares/${shareId}/download`, { method: "POST" })
-          .then((res) => {
-            if (!res.ok) throw new Error("Could not download file content");
-            return res.json();
-          })
-          .then((data) => {
-            setShareData((prev) => (prev ? { ...prev, content: data.content } : null));
-            return data.content;
-          })
-      : Promise.resolve(shareData.content);
+    const downloadUrl =
+      `${API_BASE_URL}/api/shares/${shareId}/download` +
+      (passwordInput ? `?password=${encodeURIComponent(passwordInput)}` : "");
 
-    fetchContentPromise
-      .then((fileContent) => {
+    fetch(downloadUrl)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Could not download file");
+        }
+        return res.blob();
+      })
+      .then((blob) => {
         // Cryptographic steps visualization
         setTimeout(() => setDecryptionStep(1), 500); // Verify wrap parameters
-        setTimeout(() => setDecryptionStep(2), 1200); // Reconstruct AES block keys
+        setTimeout(() => setDecryptionStep(2), 1200); // Reconstruct AES GCM keys
         setTimeout(() => setDecryptionStep(3), 2000); // Decrypt payload buffer
         setTimeout(() => {
           setIsDecrypting(false);
           setDownloadSuccess(true);
 
           // Trigger actual browser download
+          const urlObj = window.URL.createObjectURL(blob);
           const link = document.createElement("a");
-          link.href = fileContent;
+          link.href = urlObj;
           link.download = shareData.name;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+          window.URL.revokeObjectURL(urlObj);
 
-          // Handle One-Time Download Shredding
+          // Handle local fallback shredding
           if (shareData.oneTimeDownload) {
             localStorage.removeItem(`ss_share_${shareId}`);
-            // Log that this is shredded locally
-            console.log(
-              `Payload for shareId ${shareId} shredded immediately after single retrieval.`,
-            );
           }
-
-          // Redirect to sign in/up page
-          setTimeout(() => {
-            navigate({ to: "/auth/signup" });
-          }, 3000);
         }, 3000);
       })
       .catch((err) => {
         console.error(err);
         setIsDecrypting(false);
-        alert("Download failed. The file may have already been shredded or expired.");
+        alert("Download failed: " + err.message);
       });
+  };
+
+  const getErrorContent = (error: string) => {
+    switch (error) {
+      case "link_expired":
+        return {
+          title: "Link Expired",
+          description:
+            "This secure share link has reached its expiration time and is no longer accessible.",
+          icon: Clock,
+          color: "text-amber-500 bg-amber-500/10 border-amber-500/25",
+        };
+      case "link_revoked":
+        return {
+          title: "Link Revoked",
+          description:
+            "This secure share link has been revoked by the sender. Access is no longer permitted.",
+          icon: ShieldAlert,
+          color: "text-red-500 bg-red-500/10 border-red-500/25",
+        };
+      case "limit_reached":
+        return {
+          title: "Download Limit Reached",
+          description:
+            "This secure link has reached its maximum download limit and is now deactivated.",
+          icon: AlertCircle,
+          color: "text-rose-500 bg-rose-500/10 border-rose-500/25",
+        };
+      case "file_removed":
+        return {
+          title: "File Removed",
+          description:
+            "The shared file has been permanently removed by the owner from SecureShare.",
+          icon: Trash2,
+          color: "text-red-500 bg-red-500/10 border-red-500/25",
+        };
+      case "owner_inactive":
+        return {
+          title: "Account Inactive",
+          description:
+            "The sender's account is currently inactive or suspended. Data retrieval is blocked.",
+          icon: ShieldAlert,
+          color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/25",
+        };
+      default:
+        return {
+          title: "Invalid Share Link",
+          description:
+            "This secure share link is invalid, incomplete, or does not exist. Please check the URL and try again.",
+          icon: ShieldAlert,
+          color: "text-red-500 bg-red-500/10 border-red-500/25",
+        };
+    }
   };
 
   if (loading) {
@@ -226,6 +300,8 @@ function ShareDownloadPage() {
   }
 
   const FileIcon = shareData ? getFileIcon(shareData.name) : FileText;
+  const errorDetails = errorState ? getErrorContent(errorState) : null;
+  const ErrorIcon = errorDetails ? errorDetails.icon : ShieldAlert;
 
   return (
     <div className="min-h-screen bg-background text-foreground grain flex flex-col font-sans">
@@ -252,23 +328,23 @@ function ShareDownloadPage() {
       <main className="flex-1 flex items-center justify-center p-6 relative z-10">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
-            {!shareData ? (
-              /* ERROR STATE: SHARE NOT FOUND / EXPIRED */
+            {errorDetails ? (
+              /* ERROR STATES */
               <motion.div
-                key="expired"
+                key="error-page"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 className="rounded-2xl border border-border bg-card p-8 text-center shadow-lg"
               >
-                <div className="rounded-full bg-red-500/10 border border-red-500/25 p-3.5 w-fit mx-auto mb-5 text-red-500">
-                  <ShieldAlert className="h-7 w-7" />
+                <div
+                  className={`rounded-full p-3.5 w-fit mx-auto mb-5 border ${errorDetails.color}`}
+                >
+                  <ErrorIcon className="h-7 w-7" />
                 </div>
-                <h2 className="text-lg font-semibold text-ink">Secure Share Expired</h2>
+                <h2 className="text-lg font-semibold text-ink">{errorDetails.title}</h2>
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  This share link does not exist, has expired, or was already retrieved and
-                  shredded. SecureShare zero-knowledge payloads are permanently deleted from host
-                  records after expiration or single-use retrieval.
+                  {errorDetails.description}
                 </p>
                 <div className="mt-8">
                   <Link
@@ -373,7 +449,7 @@ function ShareDownloadPage() {
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                   Your file has been successfully decrypted client-side and saved to your device.
                 </p>
-                {shareData.oneTimeDownload && (
+                {shareData?.oneTimeDownload && (
                   <div className="mt-4 rounded-xl border border-red-500/10 bg-red-500/[0.02] p-3 text-red-500/90 text-[10px] leading-normal flex items-start gap-2 text-left">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>
@@ -444,35 +520,80 @@ function ShareDownloadPage() {
                 exit={{ opacity: 0, y: -15 }}
                 className="rounded-2xl border border-border bg-card p-8 text-center shadow-lg"
               >
-                <div className="rounded-2xl border border-border bg-mist/35 p-6 w-fit mx-auto mb-5 text-muted-foreground border-dashed flex items-center justify-center">
+                <div className="rounded-2xl border border-border bg-mist/35 p-6 w-fit mx-auto mb-4 text-muted-foreground border-dashed flex items-center justify-center">
                   <FileIcon className="h-10 w-10 text-ink" strokeWidth={1.5} />
+                </div>
+
+                {/* UI BADGES */}
+                <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                    <ShieldCheck className="h-3 w-3" /> AES-256 Encrypted
+                  </span>
+                  {shareData?.oneTimeDownload && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                      <AlertCircle className="h-3 w-3" /> One-Time Download
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                    <Lock className="h-3 w-3" /> Privacy Protected
+                  </span>
                 </div>
 
                 <h2
                   className="text-lg font-semibold text-ink truncate max-w-full px-2"
-                  title={shareData.name}
+                  title={shareData?.name}
                 >
-                  {shareData.name}
+                  {shareData?.name}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-                  {shareData.size} · {shareData.type || "unknown binary"}
+                  {shareData?.size} · {shareData?.type || "unknown binary"}
                 </p>
 
-                <div className="mt-6 rounded-xl border border-border bg-mist/20 p-4 text-left text-[11px] text-muted-foreground leading-normal flex gap-3">
-                  <ShieldCheck className="h-4.5 w-4.5 text-signal shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-ink block">Zero-Knowledge Decryption</span>
-                    Payload verified under local Browser sandboxing. Files are reconstructed
-                    entirely on-device.
+                {/* METADATA LIST */}
+                {shareData && (
+                  <div className="mt-6 border border-border/80 rounded-xl bg-mist/10 p-4 text-[11px] space-y-2 text-left font-sans">
+                    {shareData.createdBy && (
+                      <div className="flex justify-between border-b border-border/40 pb-2">
+                        <span className="text-muted-foreground font-mono">Shared By:</span>
+                        <span className="text-ink font-semibold">{shareData.createdBy}</span>
+                      </div>
+                    )}
+                    {shareData.createdAt && (
+                      <div className="flex justify-between border-b border-border/40 pb-2">
+                        <span className="text-muted-foreground font-mono">Shared On:</span>
+                        <span className="text-ink font-mono">
+                          {new Date(shareData.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {shareData.expiresAt && (
+                      <div className="flex justify-between border-b border-border/40 pb-2">
+                        <span className="text-muted-foreground font-mono">Expires At:</span>
+                        <span className="text-amber-600 font-semibold font-mono">
+                          {new Date(shareData.expiresAt).toLocaleDateString()}{" "}
+                          {new Date(shareData.expiresAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground font-mono">Downloads Remaining:</span>
+                      <span className="text-ink font-semibold font-mono">
+                        {shareData.downloadsLimit - shareData.downloadsCount} of{" "}
+                        {shareData.downloadsLimit}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="mt-8">
                   <button
                     onClick={handleDecryptAndDownload}
                     className="w-full py-3 rounded-xl bg-ink text-xs font-semibold text-background hover:bg-ink/90 transition-colors shadow-sm flex items-center justify-center gap-1.5"
                   >
-                    <Download className="h-4 w-4" /> Decrypt & Download File
+                    <Download className="h-4 w-4" /> Download Securely
                   </button>
                 </div>
               </motion.div>

@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useAuthStore } from "@/lib/auth-store";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -46,6 +47,13 @@ import {
 import { LogoMark } from "@/components/secureshare";
 
 export const Route = createFileRoute("/share/")({
+  beforeLoad: () => {
+    if (!useAuthStore.getState().isAuthenticated) {
+      throw redirect({
+        to: "/auth/signin",
+      });
+    }
+  },
   component: WorkspacePage,
 });
 

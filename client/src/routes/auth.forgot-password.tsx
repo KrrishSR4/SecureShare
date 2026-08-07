@@ -35,8 +35,9 @@ function ForgotPasswordPage() {
       await api.post("/auth/forgot-password", data);
       setIsSubmitted(true);
       toast.success("Reset link sent!");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to send reset link");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || "Failed to send reset link");
     } finally {
       setIsLoading(false);
     }
@@ -54,8 +55,8 @@ function ForgotPasswordPage() {
           Check your email
         </h1>
         <p className="text-muted-foreground mb-8">
-          We have sent a password reset link to your email address.
-          Please check your inbox (and spam folder) to continue.
+          We have sent a password reset link to your email address. Please check your inbox (and
+          spam folder) to continue.
         </p>
         <Link
           to="/auth/signin"
@@ -70,7 +71,10 @@ function ForgotPasswordPage() {
   return (
     <div className="w-full">
       <div className="mb-8">
-        <Link to="/auth/signin" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <Link
+          to="/auth/signin"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to sign in
         </Link>
@@ -84,9 +88,7 @@ function ForgotPasswordPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-medium leading-none">
-            Email address
-          </label>
+          <label className="text-sm font-medium leading-none">Email address</label>
           <div className="relative">
             <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
             <input

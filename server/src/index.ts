@@ -266,7 +266,7 @@ app.post("/api/trash/:fileId/restore", (req: Request, res: Response): any => {
 });
 
 // Permanent delete from trash
-app.delete("/api/trash/:fileId/permanent", (req: Request, res: Response): any => {
+app.delete("/api/trash/:fileId/permanent", async (req: Request, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
   const file = trashFiles.get(fileId);
 
@@ -280,13 +280,66 @@ app.delete("/api/trash/:fileId/permanent", (req: Request, res: Response): any =>
     if (shareId) sharedFilesMap.delete(shareId);
   });
 
+  try {
+    // Delete file from Prisma database (this cascade deletes database shares)
+    await prisma.file.delete({
+      where: { id: fileId }
+    });
+  } catch (err) {
+    console.warn(`File ${fileId} not found in database during shredding:`, err);
+  }
+
   trashFiles.delete(fileId);
   logServerActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, "Trash2");
   res.json({ success: true });
 });
 
+// Helper to validate share tokens and enforce all security rules
+async function validateShare(token: string) {
+  if (!token || typeof token !== "string" || token.length < 20) {
+    return { valid: false, error: "invalid_link" };
+  }
+
+  const share = await prisma.share.findUnique({
+    where: { token },
+    include: {
+      file: {
+        include: {
+          owner: true
+        }
+      }
+    }
+  });
+
+  if (!share) {
+    return { valid: false, error: "invalid_link" };
+  }
+
+  if (!share.file) {
+    return { valid: false, error: "file_removed" };
+  }
+
+  if (share.expiresAt && new Date() > share.expiresAt) {
+    return { valid: false, error: "link_expired" };
+  }
+
+  if (share.revoked) {
+    return { valid: false, error: "link_revoked" };
+  }
+
+  if (share.downloadsCount >= share.downloadsLimit) {
+    return { valid: false, error: "limit_reached" };
+  }
+
+  if (!share.file.owner || !share.file.owner.isActive) {
+    return { valid: false, error: "owner_inactive" };
+  }
+
+  return { valid: true, share };
+}
+
 // Generate share link for a file
-app.post("/api/files/:fileId/shares", (req: Request, res: Response): any => {
+app.post("/api/files/:fileId/shares", async (req: Request, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
   const { recipientEmail, password, oneTime } = req.body as {
     recipientEmail?: string;
@@ -294,43 +347,72 @@ app.post("/api/files/:fileId/shares", (req: Request, res: Response): any => {
     oneTime?: boolean;
   };
 
-  const file = workspaceFiles.get(fileId);
-  if (!file) {
-    return res.status(404).json({ error: "File not found." });
+  try {
+    const file = workspaceFiles.get(fileId);
+    const dbFile = await prisma.file.findUnique({
+      where: { id: fileId },
+      include: { owner: true }
+    });
+
+    if (!dbFile) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    const token = crypto.randomBytes(18).toString("base64url");
+    const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/${token}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours default expiry
+
+    const dbShare = await prisma.share.create({
+      data: {
+        token,
+        fileId: dbFile.id,
+        password: password || null,
+        expiresAt,
+        downloadsLimit: oneTime ? 1 : 5,
+        recipientEmail: recipientEmail || "Public Access Link",
+      }
+    });
+
+    // Register in shares list of in-memory file for sync
+    if (file) {
+      const newShare: SharedSession = {
+        id: dbShare.id,
+        recipientEmail: dbShare.recipientEmail || "Public Access Link",
+        url: shareUrl,
+        created: "Just now",
+        status: "active",
+        downloadsCount: 0,
+        downloadLimit: dbShare.downloadsLimit,
+      };
+      file.shares.unshift(newShare);
+      workspaceFiles.set(fileId, file);
+    }
+
+    // Register in in-memory share payload map for backward compatibility
+    const sharePayload: SharePayload = {
+      id: token,
+      name: `${dbFile.name}`,
+      size: file ? file.size : `${(dbFile.size / 1024).toFixed(0)} KB`,
+      type: dbFile.mimeType,
+      content: "",
+      requirePassword: !!password,
+      password: password || undefined,
+      oneTimeDownload: !!oneTime,
+    };
+    sharedFilesMap.set(token, sharePayload);
+
+    logServerActivity(
+      "Generated Share Link",
+      `Generated access link for ${dbFile.name} shared with ${recipientEmail || "public link"}`,
+      dbFile.name,
+      "Share2"
+    );
+
+    res.json({ url: shareUrl, shareId: token });
+  } catch (err) {
+    console.error("Share generation error:", err);
+    res.status(500).json({ error: "Failed to generate share link" });
   }
-
-  const shareId = Math.random().toString(36).substring(2, 7) + Math.random().toString(36).substring(2, 7); // 10 chars ID
-  const shareUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/${shareId}`;
-
-  // Register in shares list of file
-  const newShare: SharedSession = {
-    id: `s-${Math.random().toString(36).substring(2, 9)}`,
-    recipientEmail: recipientEmail || "Public Access Link",
-    url: shareUrl,
-    created: "Just now",
-    status: "active",
-    downloadsCount: 0,
-    downloadLimit: 5,
-  };
-  file.shares.unshift(newShare);
-  workspaceFiles.set(fileId, file);
-
-  // Register in share payload map
-  const sharePayload: SharePayload = {
-    id: shareId,
-    name: `${file.name}.${file.extension}`,
-    size: file.size,
-    type: file.type,
-    content: file.content,
-    requirePassword: !!password,
-    password: password || undefined,
-    oneTimeDownload: !!oneTime,
-  };
-  sharedFilesMap.set(shareId, sharePayload);
-
-  logServerActivity("Generated Share Link", `Generated access link for ${file.name}.${file.extension} shared with ${recipientEmail || "public link"}`, `${file.name}.${file.extension}`, "Share2");
-
-  res.json({ url: shareUrl, shareId });
 });
 
 // Get activities
@@ -351,74 +433,162 @@ app.post("/api/activities", (req: Request, res: Response) => {
 });
 
 // Get share metadata (downloader endpoint)
-app.get("/api/shares/:shareId", (req: Request, res: Response): any => {
+app.get("/api/shares/:shareId", async (req: Request, res: Response): Promise<any> => {
   const { shareId } = req.params as { shareId: string };
-  const payload = sharedFilesMap.get(shareId);
+  
+  try {
+    const { valid, share, error } = await validateShare(shareId);
+    if (!valid || !share) {
+      const status = error === "owner_inactive" ? 403 : error === "invalid_link" || error === "file_removed" ? 404 : 410;
+      return res.status(status).json({ error });
+    }
 
-  if (!payload) {
-    return res.status(404).json({ error: "Share expired or not found." });
+    res.json({
+      id: share.token,
+      name: share.file.name,
+      size: `${(share.file.size / 1024).toFixed(0)} KB`,
+      type: share.file.mimeType,
+      requirePassword: !!share.password,
+      oneTime: share.downloadsLimit === 1,
+      expiresAt: share.expiresAt,
+      downloadsCount: share.downloadsCount,
+      downloadsLimit: share.downloadsLimit,
+      remainingDownloads: share.downloadsLimit - share.downloadsCount,
+      createdBy: share.file.owner.name || share.file.owner.email,
+      createdAt: share.createdAt,
+    });
+  } catch (err) {
+    console.error("Metadata retrieval error:", err);
+    res.status(500).json({ error: "internal_server_error" });
   }
-
-  res.json({
-    id: payload.id,
-    name: payload.name,
-    size: payload.size,
-    type: payload.type,
-    requirePassword: payload.requirePassword,
-    oneTime: payload.oneTimeDownload,
-  });
 });
 
-// Retrieve share content for files without password (download endpoint)
-app.post("/api/shares/:shareId/download", (req: Request, res: Response): any => {
+// Retrieve share content (legacy/fallback POST download endpoint)
+app.post("/api/shares/:shareId/download", async (req: Request, res: Response): Promise<any> => {
   const { shareId } = req.params as { shareId: string };
-  const payload = sharedFilesMap.get(shareId);
+  
+  try {
+    const { valid, share, error } = await validateShare(shareId);
+    if (!valid || !share) {
+      const status = error === "owner_inactive" ? 403 : error === "invalid_link" || error === "file_removed" ? 404 : 410;
+      return res.status(status).json({ error });
+    }
 
-  if (!payload) {
-    return res.status(404).json({ error: "Share expired or not found." });
+    // Since POST download usually returns content directly, we can support it if needed.
+    // For our new robust file streaming download, the frontend will call GET /api/shares/:shareId/download.
+    res.json({ content: "" });
+  } catch (err) {
+    console.error("Legacy download error:", err);
+    res.status(500).json({ error: "internal_server_error" });
   }
-
-  const responsePayload = {
-    content: payload.content,
-  };
-
-  if (payload.oneTimeDownload) {
-    sharedFilesMap.delete(shareId);
-    console.log(`Shredded one-time file ${shareId} on download.`);
-  }
-
-  res.json(responsePayload);
 });
 
 // Decrypt / Retrieve share content with password verification
-app.post("/api/shares/:shareId/decrypt", (req: Request, res: Response): any => {
+app.post("/api/shares/:shareId/decrypt", async (req: Request, res: Response): Promise<any> => {
   const { shareId } = req.params as { shareId: string };
   const { password } = req.body as { password?: string };
 
-  const payload = sharedFilesMap.get(shareId);
-  if (!payload) {
-    return res.status(404).json({ error: "Share expired or not found." });
+  try {
+    const { valid, share, error } = await validateShare(shareId);
+    if (!valid || !share) {
+      const status = error === "owner_inactive" ? 403 : error === "invalid_link" || error === "file_removed" ? 404 : 410;
+      return res.status(status).json({ error });
+    }
+
+    if (share.password && share.password !== password) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    res.json({
+      id: share.token,
+      name: share.file.name,
+      size: `${(share.file.size / 1024).toFixed(0)} KB`,
+      type: share.file.mimeType,
+      content: "",
+      oneTime: share.downloadsLimit === 1,
+      success: true
+    });
+  } catch (err) {
+    console.error("Password verification error:", err);
+    res.status(500).json({ error: "internal_server_error" });
   }
+});
 
-  if (payload.password !== password) {
-    return res.status(401).json({ error: "Invalid decryption password." });
+// Streams file, Updates download counter, Revokes link if necessary
+app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Promise<any> => {
+  const { shareId } = req.params as { shareId: string };
+  const { password } = req.query as { password?: string };
+
+  try {
+    const { valid, share, error } = await validateShare(shareId);
+    if (!valid || !share) {
+      const status = error === "owner_inactive" ? 403 : error === "invalid_link" || error === "file_removed" ? 404 : 410;
+      return res.status(status).json({ error });
+    }
+
+    // Validate password if required
+    if (share.password && share.password !== password) {
+      return res.status(401).json({ error: "Incorrect password" });
+    }
+
+    const dbFile = share.file;
+    if (!dbFile.iv || !dbFile.authTag) {
+      return res.status(404).json({ error: "File encryption metadata missing" });
+    }
+
+    const filePath = path.join(process.cwd(), "uploads", dbFile.r2Key);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "File missing on disk" });
+    }
+
+    // Increment download count and check if limit is reached
+    const newCount = share.downloadsCount + 1;
+    const isLimitReached = newCount >= share.downloadsLimit;
+
+    await prisma.share.update({
+      where: { id: share.id },
+      data: {
+        downloadsCount: newCount,
+        revoked: isLimitReached ? true : share.revoked
+      }
+    });
+
+    // Sync with in-memory workspaceFiles map if it exists
+    const memoryFile = workspaceFiles.get(dbFile.id);
+    if (memoryFile) {
+      memoryFile.shares = memoryFile.shares.map(s => {
+        if (s.url.endsWith(shareId)) {
+          return {
+            ...s,
+            downloadsCount: newCount,
+            status: isLimitReached ? "revoked" as const : s.status
+          };
+        }
+        return s;
+      });
+      workspaceFiles.set(dbFile.id, memoryFile);
+    }
+
+    // Stream and decrypt the file
+    const readStream = fs.createReadStream(filePath);
+    
+    res.setHeader("Content-Disposition", `attachment; filename="${dbFile.name}"`);
+    res.setHeader("Content-Type", dbFile.mimeType);
+
+    await EncryptionService.decryptStream(readStream, res, dbFile.iv, dbFile.authTag);
+
+    logServerActivity(
+      "Secure Share Downloaded",
+      `Decrypted and streamed ${dbFile.name} from secure share link`,
+      dbFile.name,
+      "Download"
+    );
+  } catch (err) {
+    console.error("Secure download error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to decrypt file. Integrity check might have failed." });
+    }
   }
-
-  const responsePayload = {
-    id: payload.id,
-    name: payload.name,
-    size: payload.size,
-    type: payload.type,
-    content: payload.content,
-    oneTime: payload.oneTimeDownload,
-  };
-
-  if (payload.oneTimeDownload) {
-    sharedFilesMap.delete(shareId);
-    console.log(`Shredded one-time file ${shareId} on decryption.`);
-  }
-
-  res.json(responsePayload);
 });
 
 app.listen(PORT, () => {

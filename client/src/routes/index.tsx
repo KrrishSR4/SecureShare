@@ -28,7 +28,7 @@ import { ArchitectureVisualization } from "@/components/architecture-visualizati
 
 function HeroTiltCard() {
   const ref = useRef<HTMLDivElement>(null);
-  
+
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -55,7 +55,7 @@ function HeroTiltCard() {
     x.set(0);
     y.set(0);
   };
-  
+
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
@@ -72,7 +72,10 @@ function HeroTiltCard() {
   };
 
   return (
-    <div style={{ perspective: 1000 }} className="w-full relative group z-10 flex items-center justify-center lg:justify-end">
+    <div
+      style={{ perspective: 1000 }}
+      className="w-full relative group z-10 flex items-center justify-center lg:justify-end"
+    >
       <motion.div
         ref={ref}
         onMouseMove={handleMouseMove}
@@ -207,9 +210,11 @@ function Landing() {
                 <MagneticButton variant="primary" to="/share">
                   Start Sharing <ArrowRight className="h-4 w-4" />
                 </MagneticButton>
-                <MagneticButton 
+                <MagneticButton
                   variant="ghost"
-                  onClick={() => document.getElementById('architecture')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() =>
+                    document.getElementById("architecture")?.scrollIntoView({ behavior: "smooth" })
+                  }
                 >
                   See how it works
                 </MagneticButton>
@@ -235,7 +240,6 @@ function Landing() {
             <div className="hero-visual opacity-0 lg:mt-0 mt-8 w-full">
               <HeroTiltCard />
             </div>
-
           </div>
         </motion.div>
 

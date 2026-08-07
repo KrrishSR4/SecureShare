@@ -321,7 +321,9 @@ export function Nav() {
   const handleLogout = async () => {
     try {
       await api.post("/auth/logout");
-    } catch (e) {}
+    } catch (e) {
+      // Ignore network errors on logout and proceed to clean state locally
+    }
     logout();
     navigate({ to: "/auth/signin" });
   };
@@ -387,23 +389,37 @@ export function Nav() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="flex flex-col">
                     <span className="font-medium text-foreground">{user.name || "User"}</span>
-                    <span className="text-xs text-muted-foreground font-normal truncate">{user.email}</span>
+                    <span className="text-xs text-muted-foreground font-normal truncate">
+                      {user.email}
+                    </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate({ to: "/share" })} className="cursor-pointer text-sm">
+                  <DropdownMenuItem
+                    onClick={() => navigate({ to: "/share" })}
+                    className="cursor-pointer text-sm"
+                  >
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     Dashboard
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/profile" })} className="cursor-pointer text-sm">
+                  <DropdownMenuItem
+                    onClick={() => navigate({ to: "/profile" })}
+                    className="cursor-pointer text-sm"
+                  >
                     <UserIcon className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/settings" })} className="cursor-pointer text-sm">
+                  <DropdownMenuItem
+                    onClick={() => navigate({ to: "/settings" })}
+                    className="cursor-pointer text-sm"
+                  >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10 text-sm">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10 text-sm"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
@@ -1223,7 +1239,9 @@ export function ProductDemo() {
           <div className="mt-8 rounded-xl border border-border p-3">
             <div className="eyebrow mb-2">Room</div>
             <div className="font-display text-lg">Project Atlas</div>
-            <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">Q4 diligence · 8 members</div>
+            <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">
+              Q4 diligence · 8 members
+            </div>
           </div>
         </div>
 
@@ -1537,7 +1555,9 @@ export function PrivacyEngine() {
                 </div>
                 <div className="mt-auto text-left">
                   <div className="font-display text-lg leading-tight">{s.t}</div>
-                  <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">{s.d}</div>
+                  <div className="mt-1 font-kelly text-xs tracking-wide text-muted-foreground">
+                    {s.d}
+                  </div>
                 </div>
               </SpotlightCard>
               {i < stages.length - 1 && (
@@ -1623,7 +1643,9 @@ export function FeaturesBento() {
               />
               <div className="mt-8">
                 <h4 className="font-display text-xl leading-tight md:text-2xl">{c.title}</h4>
-                <p className="mt-2 max-w-sm text-sm font-kelly tracking-wide text-muted-foreground">{c.desc}</p>
+                <p className="mt-2 max-w-sm text-sm font-kelly tracking-wide text-muted-foreground">
+                  {c.desc}
+                </p>
               </div>
             </SpotlightCard>
           </Reveal>
@@ -1658,7 +1680,9 @@ export function ArchitectureDiagram() {
               </div>
               <div className="flex-1">
                 <div className="font-display text-2xl leading-none">{l.t}</div>
-                <div className="mt-1 font-kelly text-sm tracking-wide text-muted-foreground">{l.d}</div>
+                <div className="mt-1 font-kelly text-sm tracking-wide text-muted-foreground">
+                  {l.d}
+                </div>
               </div>
               <ArrowUpRight className="h-4 w-4 -translate-x-2 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
             </div>
@@ -1741,7 +1765,8 @@ export function DocsPreview() {
     },
     {
       title: "Privacy Policy",
-      description: "Read about our zero-trust architecture, data collection, and security measures.",
+      description:
+        "Read about our zero-trust architecture, data collection, and security measures.",
       icon: ShieldCheck,
       href: "/privacypolicy",
       tag: "LEGAL",
@@ -1824,7 +1849,9 @@ export function Section({
           )}
           {intro && (
             <Reveal delay={0.1}>
-              <p className="mt-4 max-w-2xl text-lg font-kelly text-muted-foreground text-balance">{intro}</p>
+              <p className="mt-4 max-w-2xl text-lg font-kelly text-muted-foreground text-balance">
+                {intro}
+              </p>
             </Reveal>
           )}
         </div>
@@ -1965,16 +1992,16 @@ export function LoadSequence() {
         >
           {/* Big Glow behind image */}
           <div className="absolute inset-0 bg-signal/30 blur-[60px] rounded-full scale-150" />
-          <img 
-            src="/secureshare123.png" 
-            alt="SecureShare Logo" 
-            className="relative h-40 w-40 md:h-52 md:w-52 object-contain drop-shadow-2xl z-10" 
+          <img
+            src="/secureshare123.png"
+            alt="SecureShare Logo"
+            className="relative h-40 w-40 md:h-52 md:w-52 object-contain drop-shadow-2xl z-10"
             onError={(e) => {
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.style.display = "none";
             }}
           />
         </motion.div>
-        
+
         <div className="space-y-4">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
@@ -1984,7 +2011,7 @@ export function LoadSequence() {
           >
             SecureShare
           </motion.h1>
-          
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1996,7 +2023,7 @@ export function LoadSequence() {
         </div>
 
         {/* Animated Sharing -> Secured Progress */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}

@@ -43,7 +43,9 @@ function SettingsPage() {
 
           <div className="mb-10">
             <h1 className="font-display text-4xl tracking-tight text-foreground">Settings</h1>
-            <p className="text-muted-foreground mt-2 text-lg">Manage your workspace preferences and security configurations.</p>
+            <p className="text-muted-foreground mt-2 text-lg">
+              Manage your workspace preferences and security configurations.
+            </p>
           </div>
 
           <Tabs defaultValue="security" className="w-full flex flex-col md:flex-row gap-8">
@@ -70,7 +72,9 @@ function SettingsPage() {
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                       <p className="font-medium">Authenticator App</p>
-                      <p className="text-sm text-muted-foreground">Add an extra layer of security to your account.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Add an extra layer of security to your account.
+                      </p>
                     </div>
                     <button className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-background transition-colors hover:bg-ink/90">
                       Enable 2FA
@@ -86,8 +90,15 @@ function SettingsPage() {
                   <div className="space-y-4">
                     <div className="flex items-start justify-between p-4 border border-border rounded-xl bg-muted/30">
                       <div>
-                        <p className="font-medium flex items-center gap-2">Windows PC (Chrome) <span className="text-[10px] uppercase font-bold text-signal bg-signal/10 px-2 py-0.5 rounded-full">Current</span></p>
-                        <p className="text-xs text-muted-foreground mt-1">Delhi, India • Active now</p>
+                        <p className="font-medium flex items-center gap-2">
+                          Windows PC (Chrome){" "}
+                          <span className="text-[10px] uppercase font-bold text-signal bg-signal/10 px-2 py-0.5 rounded-full">
+                            Current
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Delhi, India • Active now
+                        </p>
                       </div>
                       <Monitor className="h-5 w-5 text-muted-foreground" />
                     </div>
@@ -102,7 +113,10 @@ function SettingsPage() {
                     <Trash2 className="h-5 w-5" />
                     Danger Zone
                   </h2>
-                  <p className="text-sm text-red-600/80 mb-6">Permanently delete your account and all associated data. This action cannot be undone.</p>
+                  <p className="text-sm text-red-600/80 mb-6">
+                    Permanently delete your account and all associated data. This action cannot be
+                    undone.
+                  </p>
                   <button
                     onClick={handleDeleteAccount}
                     className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"

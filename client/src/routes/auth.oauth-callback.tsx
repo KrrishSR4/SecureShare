@@ -43,7 +43,9 @@ function OAuthCallback() {
   return (
     <div className="flex h-[400px] w-full flex-col items-center justify-center space-y-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <h2 className="text-xl font-semibold font-display tracking-tight text-foreground">Authenticating...</h2>
+      <h2 className="text-xl font-semibold font-display tracking-tight text-foreground">
+        Authenticating...
+      </h2>
       <p className="text-muted-foreground text-sm">Please wait while we log you in securely.</p>
     </div>
   );

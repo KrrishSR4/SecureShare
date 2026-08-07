@@ -19,7 +19,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 api.interceptors.response.use(
@@ -32,7 +32,7 @@ api.interceptors.response.use(
         const res = await axios.post(
           `${API_URL}/auth/refresh-token`,
           {},
-          { withCredentials: true }
+          { withCredentials: true },
         );
         const { accessToken } = res.data;
         useAuthStore.getState().setAccessToken(accessToken);
@@ -44,7 +44,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

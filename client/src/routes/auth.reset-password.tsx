@@ -39,7 +39,7 @@ type ResetForm = z.infer<typeof resetSchema>;
 function calculatePasswordStrength(password: string) {
   let score = 0;
   if (!password) return { score: 0, label: "Empty", color: "bg-zinc-800" };
-  
+
   if (password.length >= 8) score += 1;
   if (/[A-Z]/.test(password)) score += 1;
   if (/[a-z]/.test(password)) score += 1;
@@ -101,8 +101,9 @@ function ResetPasswordPage() {
       });
       toast.success("Password updated successfully.");
       navigate({ to: "/auth/signin" });
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to reset password");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || "Failed to reset password");
     } finally {
       setIsLoading(false);
     }
@@ -149,12 +150,16 @@ function ResetPasswordPage() {
                   style={{ width: `${(strength.score / 5) * 100}%` }}
                 />
               </div>
-              <p className={`text-xs font-medium ${strength.score <= 2 ? 'text-red-500' : strength.score === 3 ? 'text-yellow-500' : 'text-green-500'}`}>
+              <p
+                className={`text-xs font-medium ${strength.score <= 2 ? "text-red-500" : strength.score === 3 ? "text-yellow-500" : "text-green-500"}`}
+              >
                 {strength.label} password
               </p>
             </div>
           )}
-          {errors.password && <p className="text-sm text-red-500 font-medium">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="text-sm text-red-500 font-medium">{errors.password.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -175,7 +180,9 @@ function ResetPasswordPage() {
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-          {errors.confirmPassword && <p className="text-sm text-red-500 font-medium">{errors.confirmPassword.message}</p>}
+          {errors.confirmPassword && (
+            <p className="text-sm text-red-500 font-medium">{errors.confirmPassword.message}</p>
+          )}
         </div>
 
         <button
