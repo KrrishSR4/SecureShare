@@ -118,6 +118,16 @@ const getIconComponent = (iconName?: string) => {
 };
 
 function WorkspacePage() {
+  const { user, accessToken } = useAuthStore();
+
+  const fetchWithAuth = (url: string, options: RequestInit = {}) => {
+    const headers = {
+      ...options.headers,
+      ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+    };
+    return window.fetch(url, { ...options, headers });
+  };
+
   // STATE MANAGEMENT
   const [activeTab, setActiveTab] = useState<
     "workspace" | "shared" | "activity" | "trash" | "settings"
@@ -198,7 +208,7 @@ function WorkspacePage() {
   };
 
   const refreshFromServer = () => {
-    fetch(`${API_BASE_URL}/api/files`)
+    fetchWithAuth(`${API_BASE_URL}/api/files`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -215,7 +225,7 @@ function WorkspacePage() {
       })
       .catch(() => loadFromLocalFallback());
 
-    fetch(`${API_BASE_URL}/api/trash`)
+    fetchWithAuth(`${API_BASE_URL}/api/trash`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -225,7 +235,7 @@ function WorkspacePage() {
         console.warn("Failed to fetch trash from server", err);
       });
 
-    fetch(`${API_BASE_URL}/api/activities`)
+    fetchWithAuth(`${API_BASE_URL}/api/activities`)
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -252,7 +262,7 @@ function WorkspacePage() {
   };
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/health`).then((res) => {
+    fetchWithAuth(`${API_BASE_URL}/api/health`).then((res) => {
       if (res.ok) {
         setIsServerOnline(true);
         refreshFromServer();
@@ -302,7 +312,7 @@ function WorkspacePage() {
     icon: React.ComponentType<{ className?: string }> = FileText,
   ) => {
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/activities`, {
+      fetchWithAuth(`${API_BASE_URL}/api/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, details, target: fileName || "", iconName: "FileText" }),
@@ -375,7 +385,7 @@ function WorkspacePage() {
         size: sizeStr,
         sizeBytes: file.size,
         uploadTime: "Just now",
-        owner: "Alex Rivera",
+        owner: user?.name || "Me",
         status: "uploading",
         progress: 0,
         type: file.type || "application/octet-stream",
@@ -426,7 +436,7 @@ function WorkspacePage() {
             formData.append("type", fileInfo.type);
             formData.append("file", rawFile);
 
-            fetch(`${API_BASE_URL}/api/files`, {
+            fetchWithAuth(`${API_BASE_URL}/api/files`, {
               method: "POST",
               body: formData,
             })
@@ -525,7 +535,7 @@ function WorkspacePage() {
     if (!renameTarget || !renameValue.trim()) return;
 
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/files/${renameTarget.id}/rename`, {
+      fetchWithAuth(`${API_BASE_URL}/api/files/${renameTarget.id}/rename`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: renameValue }),
@@ -568,7 +578,7 @@ function WorkspacePage() {
 
   const handleDelete = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/files/${file.id}`, {
+      fetchWithAuth(`${API_BASE_URL}/api/files/${file.id}`, {
         method: "DELETE",
       })
         .then((res) => {
@@ -606,7 +616,7 @@ function WorkspacePage() {
 
   const handleRestore = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/trash/${file.id}/restore`, {
+      fetchWithAuth(`${API_BASE_URL}/api/trash/${file.id}/restore`, {
         method: "POST",
       })
         .then((res) => {
@@ -641,7 +651,7 @@ function WorkspacePage() {
 
   const handlePermanentDelete = (file: WorkspaceFile) => {
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/trash/${file.id}/permanent`, {
+      fetchWithAuth(`${API_BASE_URL}/api/trash/${file.id}/permanent`, {
         method: "DELETE",
       })
         .then((res) => {
@@ -696,7 +706,7 @@ function WorkspacePage() {
       "data:text/plain;base64,U2VjdXJlU2hhcmUgRGVtbyBGaWxlIENvbnRlbnQgKGxvY2FsIHN0b3JhZ2UgZmFsbGJhY2sp";
 
     if (isServerOnline) {
-      fetch(`${API_BASE_URL}/api/files/${shareFileTarget.id}/shares`, {
+      fetchWithAuth(`${API_BASE_URL}/api/files/${shareFileTarget.id}/shares`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -997,12 +1007,12 @@ function WorkspacePage() {
 
           {/* Connected User Profile Card */}
           <div className="border-t border-border/80 pt-6 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-ink text-background flex items-center justify-center font-mono text-xs font-bold shadow-sm">
-              AR
+            <div className="h-9 w-9 rounded-full bg-ink text-background flex items-center justify-center font-mono text-xs font-bold shadow-sm uppercase">
+              {user?.name ? user.name.slice(0, 2) : user?.email ? user.email.slice(0, 2) : "US"}
             </div>
             <div className="flex-1 min-w-0">
-              <h5 className="text-xs font-semibold text-ink truncate">Alex Rivera</h5>
-              <p className="text-[10px] text-muted-foreground truncate">alex@secureshare.io</p>
+              <h5 className="text-xs font-semibold text-ink truncate">{user?.name || "User"}</h5>
+              <p className="text-[10px] text-muted-foreground truncate">{user?.email || "user@secureshare.io"}</p>
             </div>
           </div>
         </aside>

@@ -68,20 +68,20 @@ const NODES = [
     log: "Generating per-recipient encryption keys.",
   },
   {
-    id: "storage",
-    title: "Secure Storage",
-    desc: "Saves safely",
-    icon: Database,
-    details: ["Sharded", "Replicated", "Immutable"],
-    log: "Sharding and persisting to regional bucket.",
-  },
-  {
     id: "audit",
     title: "Audit Logging",
     desc: "Records event",
     icon: Activity,
     details: ["WORM Storage", "SIEM Export"],
     log: "Writing immutable ledger entry #499201.",
+  },
+  {
+    id: "storage",
+    title: "Secure Storage",
+    desc: "Saves safely",
+    icon: Database,
+    details: ["Sharded", "Replicated", "Immutable"],
+    log: "Sharding and persisting to regional bucket.",
   },
   {
     id: "recipient",
@@ -94,30 +94,92 @@ const NODES = [
 ];
 
 const LINKS = [
-  { from: 0, to: 1 },
-  { from: 1, to: 2 },
-  { from: 2, to: 3 },
-  { from: 3, to: 4 },
-  { from: 4, to: 5 },
-  { from: 5, to: 6 },
-  { from: 6, to: 7 },
-  { from: 7, to: 8 },
+  { from: 0, to: 1 }, // Browser -> API Gateway
+  { from: 1, to: 2 }, // API Gateway -> Authn
+  { from: 2, to: 3 }, // Authn -> Authz
+  { from: 1, to: 4 }, // API Gateway -> Policy
+  { from: 4, to: 5 }, // Policy -> Enc
+  { from: 1, to: 6 }, // API Gateway -> Audit
+  { from: 3, to: 7 }, // Authz -> Storage
+  { from: 5, to: 7 }, // Enc -> Storage
+  { from: 6, to: 7 }, // Audit -> Storage
+  { from: 7, to: 8 }, // Storage -> Recipient
 ];
 
 const getNodePos = (i: number, innerWidth: number, rowHeight: number, isMobile: boolean) => {
   if (isMobile) {
     return { x: innerWidth / 2, y: i * 100 };
   }
-  if (i < 3) {
-    // Row 1: Left to right (0, 1, 2)
-    return { x: (i / 2) * innerWidth, y: 0 };
-  } else if (i < 6) {
-    // Row 2: Right to left (3, 4, 5)
-    return { x: ((5 - i) / 2) * innerWidth, y: rowHeight };
-  } else {
-    // Row 3: Left to right (6, 7, 8)
-    return { x: ((i - 6) / 2) * innerWidth, y: rowHeight * 2 };
+
+  // Column positions based on percentages of innerWidth
+  const col0 = 0;
+  const col1 = innerWidth * 0.18;
+  const col2 = innerWidth * 0.38;
+  const col3 = innerWidth * 0.58;
+  const col4 = innerWidth * 0.78;
+  const col5 = innerWidth;
+
+  // Row positions
+  const row0 = 0; // top branch
+  const row1 = rowHeight; // middle branch / main axis
+  const row2 = rowHeight * 2; // bottom branch
+
+  switch (i) {
+    case 0: // Browser
+      return { x: col0, y: row1 };
+    case 1: // API Gateway
+      return { x: col1, y: row1 };
+    case 2: // Authentication
+      return { x: col2, y: row0 };
+    case 3: // Authorization
+      return { x: col3, y: row0 };
+    case 4: // Policy Engine
+      return { x: col2, y: row1 };
+    case 5: // Encryption
+      return { x: col3, y: row1 };
+    case 6: // Audit Logging
+      return { x: innerWidth * 0.48, y: row2 }; // centered in the bottom row
+    case 7: // Secure Storage
+      return { x: col4, y: row1 };
+    case 8: // Recipient
+      return { x: col5, y: row1 };
+    default:
+      return { x: 0, y: 0 };
   }
+};
+
+const isLinkActive = (link: { from: number; to: number }, activeIndex: number) => {
+  if (activeIndex === 0) return false;
+  
+  const { from, to } = link;
+  
+  if (activeIndex === 1) {
+    return from === 0 && to === 1;
+  }
+  if (activeIndex === 2) {
+    return (from === 0 && to === 1) || (from === 1 && to === 2);
+  }
+  if (activeIndex === 3) {
+    return (from === 0 && to === 1) || (from === 1 && to === 2) || (from === 2 && to === 3);
+  }
+  if (activeIndex === 4) {
+    return (from === 0 && to === 1) || (from === 1 && to === 4);
+  }
+  if (activeIndex === 5) {
+    return (from === 0 && to === 1) || (from === 1 && to === 4) || (from === 4 && to === 5);
+  }
+  if (activeIndex === 6) {
+    return (from === 0 && to === 1) || (from === 1 && to === 6);
+  }
+  if (activeIndex === 7) {
+    // Everything leading into Secure Storage (7) is active!
+    return to <= 7;
+  }
+  if (activeIndex === 8) {
+    return true;
+  }
+  
+  return false;
 };
 
 export function ArchitectureVisualization() {
@@ -147,7 +209,7 @@ export function ArchitectureVisualization() {
     if (!isPlaying) return;
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % NODES.length);
-    }, 4000);
+    }, 400); // 400ms
     return () => clearInterval(interval);
   }, [isPlaying]);
 
@@ -160,13 +222,13 @@ export function ArchitectureVisualization() {
 
   const margin = {
     top: 40,
-    right: isMobile ? 30 : 80,
+    right: isMobile ? 30 : 60,
     bottom: 40,
-    left: isMobile ? 30 : 80,
+    left: isMobile ? 30 : 60,
   };
 
   const innerWidth = width - margin.left - margin.right;
-  const rowHeight = 160;
+  const rowHeight = 130; // slightly reduced height to make diagram tighter
   const innerHeight = isMobile ? NODES.length * 100 : rowHeight * 2;
 
   // Actual step index to display details and highlight paths
@@ -184,32 +246,54 @@ export function ArchitectureVisualization() {
   ) => {
     const dx = cardWidth / 2;
     const dy = cardHeight / 2;
-    const gap = 10; // gap to keep arrow tip slightly away from card borders
 
     if (isMobile) {
       // Mobile is vertical down
+      const gap = 10;
       return `M ${from.x},${from.y + dy + 2} L ${to.x},${to.y - dy - gap}`;
     }
 
-    if (Math.abs(from.y - to.y) < 10) {
-      // Horizontal link
-      if (to.x > from.x) {
-        return `M ${from.x + dx + 2},${from.y} L ${to.x - dx - gap},${to.y}`;
-      } else {
-        return `M ${from.x - dx - 2},${from.y} L ${to.x + dx + gap},${to.y}`;
-      }
-    } else {
-      // Vertical link
-      if (to.y > from.y) {
-        return `M ${from.x},${from.y + dy + 2} L ${to.x},${to.y - dy - gap}`;
-      } else {
-        return `M ${from.x},${from.y - dy - 2} L ${to.x},${to.y + dy + gap}`;
-      }
-    }
+    const dx_val = to.x - from.x;
+    const dy_val = to.y - from.y;
+    const dist = Math.sqrt(dx_val * dx_val + dy_val * dy_val);
+
+    if (dist === 0) return "";
+
+    const ux = dx_val / dist;
+    const uy = dy_val / dist;
+
+    // Symmetrical box ray intersection calculations
+    const tx = ux !== 0 ? dx / Math.abs(ux) : Infinity;
+    const ty = uy !== 0 ? dy / Math.abs(uy) : Infinity;
+    const t_edge = Math.min(tx, ty);
+
+    const startOffset = t_edge + 2;
+    const endOffset = t_edge + 10; // offset to fit arrow marker tip
+
+    const startX = from.x + ux * startOffset;
+    const startY = from.y + uy * startOffset;
+    const endX = to.x - ux * endOffset;
+    const endY = to.y - uy * endOffset;
+
+    return `M ${startX},${startY} L ${endX},${endY}`;
   };
 
   const displayNode = NODES[displayStepIndex];
   const DisplayIcon = displayNode.icon;
+
+  // Render linear sequential links on mobile, tree links on desktop
+  const linksToRender = isMobile
+    ? [
+        { from: 0, to: 1 },
+        { from: 1, to: 2 },
+        { from: 2, to: 3 },
+        { from: 3, to: 4 },
+        { from: 4, to: 5 },
+        { from: 5, to: 6 },
+        { from: 6, to: 7 },
+        { from: 7, to: 8 },
+      ]
+    : LINKS;
 
   return (
     <div className="relative w-full mx-auto py-6" ref={containerRef}>
@@ -240,7 +324,7 @@ export function ArchitectureVisualization() {
             </defs>
             <g transform={`translate(${margin.left}, ${margin.top})`}>
               {/* Background links */}
-              {LINKS.map((link, idx) => {
+              {linksToRender.map((link, idx) => {
                 const fromNode = nodesData[link.from];
                 const toNode = nodesData[link.to];
                 const pathStr = getLinkPath(fromNode, toNode, isMobile);
@@ -257,11 +341,14 @@ export function ArchitectureVisualization() {
               })}
 
               {/* Active flow path links overlay */}
-              {LINKS.map((link, idx) => {
+              {linksToRender.map((link, idx) => {
                 const fromNode = nodesData[link.from];
                 const toNode = nodesData[link.to];
                 const pathStr = getLinkPath(fromNode, toNode, isMobile);
-                const isPathActive = link.to <= displayStepIndex;
+                
+                const isPathActive = isMobile
+                  ? link.to <= displayStepIndex
+                  : isLinkActive(link, displayStepIndex);
 
                 return (
                   <path
@@ -501,7 +588,7 @@ export function ArchitectureVisualization() {
           overflow: hidden;
           border-right: 2px solid #10b981;
           white-space: nowrap;
-          animation: typing 0.6s steps(40, end), blink-caret 0.75s step-end infinite;
+          animation: typing 0.25s steps(40, end), blink-caret 0.75s step-end infinite;
           max-width: 100%;
         }
         @keyframes typing {

@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js";
+import { requireAuth, AuthRequest } from "./middleware/auth.js";
 import busboy from "busboy";
 import fs from "fs";
 import path from "path";
@@ -75,25 +76,28 @@ interface SharePayload {
   oneTimeDownload?: boolean;
 }
 
-const workspaceFiles = new Map<string, WorkspaceFile>();
-const trashFiles = new Map<string, WorkspaceFile>();
-const sharedFilesMap = new Map<string, SharePayload>();
-const activitiesList: ActivityEvent[] = [];
-
 // Helper to log activities on the server
-const logServerActivity = (action: string, details: string, target: string, iconName: string) => {
-  const newActivity: ActivityEvent = {
-    id: `act-${Math.random().toString(36).substring(2, 9)}`,
-    action,
-    details,
-    timestamp: "Just now",
-    target,
-    iconName,
-  };
-  activitiesList.unshift(newActivity);
-  if (activitiesList.length > 20) {
-    activitiesList.pop(); // keep last 20 activities
+const logServerActivity = async (action: string, details: string, target: string, iconName: string, userId?: string) => {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        action,
+        details,
+        userId: userId || null
+      }
+    });
+  } catch (err) {
+    console.error("Failed to write server activity log to DB:", err);
   }
+};
+
+const formatBytes = (bytes: number, decimals = 1) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
 
 // Seed initial log
@@ -115,12 +119,54 @@ app.get("/api/health", async (req: Request, res: Response) => {
 app.use("/api/auth", authRoutes);
 
 // Get all files
-app.get("/api/files", (req: Request, res: Response) => {
-  res.json(Array.from(workspaceFiles.values()));
+app.get("/api/files", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const dbFiles = await prisma.file.findMany({
+      where: {
+        ownerId: userId,
+        inTrash: false
+      },
+      include: {
+        shares: true,
+        owner: true
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    });
+
+    const mappedFiles: WorkspaceFile[] = dbFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      extension: f.name.split('.').pop() || "bin",
+      size: formatBytes(f.size),
+      sizeBytes: f.size,
+      uploadTime: f.createdAt.toISOString(),
+      owner: f.owner.name || f.owner.email,
+      status: "completed",
+      type: f.mimeType,
+      shares: f.shares.map((s) => ({
+        id: s.id,
+        recipientEmail: s.recipientEmail || "Public Access Link",
+        url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/${s.token}`,
+        created: s.createdAt.toISOString(),
+        status: s.revoked ? "revoked" as const : "active" as const,
+        downloadsCount: s.downloadsCount,
+        downloadLimit: s.downloadsLimit
+      })),
+      content: ""
+    }));
+
+    res.json(mappedFiles);
+  } catch (err) {
+    console.error("Failed to get files:", err);
+    res.status(500).json({ error: "Failed to fetch files." });
+  }
 });
 
 // Create new file
-app.post("/api/files", (req: Request, res: Response): void => {
+app.post("/api/files", requireAuth, (req: AuthRequest, res: Response): void => {
   const bb = busboy({ headers: req.headers as any });
   let fileData: any = {};
 
@@ -148,34 +194,29 @@ app.post("/api/files", (req: Request, res: Response): void => {
           iv,
           authTag,
           owner: {
-            connectOrCreate: {
-              where: { email: "alex@example.com" },
-              create: {
-                id: "mock-user-id",
-                email: "alex@example.com",
-                name: "Alex Rivera"
-              }
-            }
+            connect: { id: req.user?.userId }
           }
+        },
+        include: {
+          owner: true
         }
       });
 
       const newFile: WorkspaceFile = {
         id: fileId,
-        name: fileData.name || info.filename,
-        extension: fileData.extension || info.filename.split('.').pop() || "bin",
-        size: fileData.size || "Unknown size",
+        name: dbFile.name,
+        extension: dbFile.name.split('.').pop() || "bin",
+        size: formatBytes(dbFile.size),
         sizeBytes: dbFile.size,
         uploadTime: "Just now",
-        owner: "Alex Rivera",
+        owner: dbFile.owner.name || dbFile.owner.email,
         status: "completed",
-        type: fileData.type || info.mimeType,
+        type: dbFile.mimeType,
         shares: [],
-        content: "" // No plaintext stored
+        content: ""
       };
-      workspaceFiles.set(fileId, newFile);
 
-      logServerActivity("Uploaded File", `Encrypted and saved ${newFile.name}.${newFile.extension}`, `${newFile.name}.${newFile.extension}`, "Upload");
+      logServerActivity("Uploaded File", `Encrypted and saved ${newFile.name}.${newFile.extension}`, `${newFile.name}.${newFile.extension}`, "Upload", req.user?.userId);
       res.json(newFile);
     } catch (err) {
       console.error("Encryption error:", err);
@@ -187,11 +228,13 @@ app.post("/api/files", (req: Request, res: Response): void => {
 });
 
 // Download decrypted file
-app.get("/api/files/:fileId/download", async (req: Request, res: Response): Promise<void> => {
+app.get("/api/files/:fileId/download", requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
   const { fileId } = req.params;
   
   try {
-    const dbFile = await prisma.file.findUnique({ where: { id: fileId as string } });
+    const dbFile = await prisma.file.findFirst({
+      where: { id: fileId as string, ownerId: req.user?.userId }
+    });
     if (!dbFile || !dbFile.iv || !dbFile.authTag) {
       res.status(404).json({ error: "File or encryption metadata not found." });
       return;
@@ -210,7 +253,7 @@ app.get("/api/files/:fileId/download", async (req: Request, res: Response): Prom
 
     await EncryptionService.decryptStream(readStream, res, dbFile.iv, dbFile.authTag);
     
-    logServerActivity("Downloaded File", `Decrypted and streamed ${dbFile.name}`, dbFile.name, "Download");
+    logServerActivity("Downloaded File", `Decrypted and streamed ${dbFile.name}`, dbFile.name, "Download", req.user?.userId);
   } catch (err) {
     console.error("Decryption error:", err);
     if (!res.headersSent) {
@@ -220,7 +263,7 @@ app.get("/api/files/:fileId/download", async (req: Request, res: Response): Prom
 });
 
 // Rename file
-app.post("/api/files/:fileId/rename", (req: Request, res: Response): any => {
+app.post("/api/files/:fileId/rename", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
   const { name } = req.body as { name?: string };
 
@@ -228,72 +271,162 @@ app.post("/api/files/:fileId/rename", (req: Request, res: Response): any => {
     return res.status(400).json({ error: "New name is required." });
   }
 
-  const file = workspaceFiles.get(fileId);
-  if (!file) {
-    return res.status(404).json({ error: "File not found." });
+  try {
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, ownerId: req.user?.userId },
+      include: { owner: true }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    const oldName = file.name;
+    const updatedFile = await prisma.file.update({
+      where: { id: fileId },
+      data: { name },
+      include: { owner: true }
+    });
+
+    const ext = updatedFile.name.split('.').pop() || "bin";
+    logServerActivity("Renamed File", `Renamed ${oldName}.${ext} to ${name}.${ext}`, `${name}.${ext}`, "Edit2", req.user?.userId);
+    
+    res.json({
+      id: updatedFile.id,
+      name: updatedFile.name,
+      extension: ext,
+      size: formatBytes(updatedFile.size),
+      sizeBytes: updatedFile.size,
+      uploadTime: updatedFile.createdAt.toISOString(),
+      owner: updatedFile.owner.name || updatedFile.owner.email,
+      status: "completed",
+      type: updatedFile.mimeType,
+      shares: [],
+      content: ""
+    });
+  } catch (err) {
+    console.error("Rename failed:", err);
+    res.status(500).json({ error: "Failed to rename file." });
   }
-
-  const oldName = file.name;
-  file.name = name;
-  workspaceFiles.set(fileId, file);
-
-  logServerActivity("Renamed File", `Renamed ${oldName}.${file.extension} to ${name}.${file.extension}`, `${name}.${file.extension}`, "Edit2");
-  res.json(file);
 });
 
 // Delete file (move to trash)
-app.delete("/api/files/:fileId", (req: Request, res: Response): any => {
+app.delete("/api/files/:fileId", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
-  const file = workspaceFiles.get(fileId);
 
-  if (!file) {
-    return res.status(404).json({ error: "File not found." });
+  try {
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, ownerId: req.user?.userId }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    await prisma.file.update({
+      where: { id: fileId },
+      data: { inTrash: true }
+    });
+
+    logServerActivity("Deleted File", `Moved ${file.name} to trash bin`, file.name, "Trash2", req.user?.userId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete failed:", err);
+    res.status(500).json({ error: "Failed to delete file." });
   }
-
-  workspaceFiles.delete(fileId);
-  trashFiles.set(fileId, file);
-
-  logServerActivity("Deleted File", `Moved ${file.name}.${file.extension} to trash bin`, `${file.name}.${file.extension}`, "Trash2");
-  res.json({ success: true });
 });
 
 // Get trash files
-app.get("/api/trash", (req: Request, res: Response) => {
-  res.json(Array.from(trashFiles.values()));
+app.get("/api/trash", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const dbFiles = await prisma.file.findMany({
+      where: {
+        ownerId: req.user?.userId,
+        inTrash: true
+      },
+      include: {
+        owner: true
+      },
+      orderBy: {
+        updatedAt: "desc"
+      }
+    });
+
+    const mappedFiles = dbFiles.map(f => ({
+      id: f.id,
+      name: f.name,
+      extension: f.name.split('.').pop() || "bin",
+      size: formatBytes(f.size),
+      sizeBytes: f.size,
+      uploadTime: f.createdAt.toISOString(),
+      owner: f.owner.name || f.owner.email,
+      status: "completed",
+      type: f.mimeType,
+      shares: [],
+      content: ""
+    }));
+
+    res.json(mappedFiles);
+  } catch (err) {
+    console.error("Failed to get trash files:", err);
+    res.status(500).json({ error: "Failed to fetch trash bin." });
+  }
 });
 
 // Restore file from trash
-app.post("/api/trash/:fileId/restore", (req: Request, res: Response): any => {
+app.post("/api/trash/:fileId/restore", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
-  const file = trashFiles.get(fileId);
 
-  if (!file) {
-    return res.status(404).json({ error: "File not found in trash." });
+  try {
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, ownerId: req.user?.userId, inTrash: true },
+      include: { owner: true }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: "File not found in trash." });
+    }
+
+    const restoredFile = await prisma.file.update({
+      where: { id: fileId },
+      data: { inTrash: false },
+      include: { owner: true }
+    });
+
+    logServerActivity("Restored File", `Restored ${restoredFile.name} from trash to workspace`, restoredFile.name, "RotateCcw", req.user?.userId);
+    
+    res.json({
+      id: restoredFile.id,
+      name: restoredFile.name,
+      extension: restoredFile.name.split('.').pop() || "bin",
+      size: formatBytes(restoredFile.size),
+      sizeBytes: restoredFile.size,
+      uploadTime: restoredFile.createdAt.toISOString(),
+      owner: restoredFile.owner.name || restoredFile.owner.email,
+      status: "completed",
+      type: restoredFile.mimeType,
+      shares: [],
+      content: ""
+    });
+  } catch (err) {
+    console.error("Restore failed:", err);
+    res.status(500).json({ error: "Failed to restore file." });
   }
-
-  trashFiles.delete(fileId);
-  workspaceFiles.set(fileId, file);
-
-  logServerActivity("Restored File", `Restored ${file.name}.${file.extension} from trash to workspace`, `${file.name}.${file.extension}`, "RotateCcw");
-  res.json(file);
 });
 
 // Permanent delete from trash
-app.delete("/api/trash/:fileId/permanent", async (req: Request, res: Response): Promise<any> => {
+app.delete("/api/trash/:fileId/permanent", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
-  const file = trashFiles.get(fileId);
-
-  if (!file) {
-    return res.status(404).json({ error: "File not found in trash." });
-  }
-
-  // Remove any shares registered under this file
-  file.shares.forEach((share) => {
-    const shareId = share.url.split("/").pop();
-    if (shareId) sharedFilesMap.delete(shareId);
-  });
 
   try {
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, ownerId: req.user?.userId, inTrash: true }
+    });
+
+    if (!file) {
+      return res.status(404).json({ error: "File not found in trash." });
+    }
+
     // Find all shares for this file to invalidate their cache
     const fileShares = await prisma.share.findMany({
       where: { fileId }
@@ -302,17 +435,23 @@ app.delete("/api/trash/:fileId/permanent", async (req: Request, res: Response): 
       await TokenService.invalidateShare(share.token);
     }
 
+    // Delete file from disk if it exists
+    const filePath = path.join(process.cwd(), "uploads", file.r2Key);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
     // Delete file from Prisma database (this cascade deletes database shares)
     await prisma.file.delete({
       where: { id: fileId }
     });
-  } catch (err) {
-    console.warn(`File ${fileId} not found in database during shredding:`, err);
-  }
 
-  trashFiles.delete(fileId);
-  logServerActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}.${file.extension}`, `${file.name}.${file.extension}`, "Trash2");
-  res.json({ success: true });
+    logServerActivity("Shredded File", `Permanently shredded metadata and cyphertext wrapper for ${file.name}`, file.name, "Trash2", req.user?.userId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Permanent delete failed:", err);
+    res.status(500).json({ error: "Failed to shred file." });
+  }
 });
 
 // Helper to validate share tokens and enforce all security rules
@@ -352,7 +491,7 @@ async function validateShare(token: string) {
 }
 
 // Generate share link for a file
-app.post("/api/files/:fileId/shares", async (req: Request, res: Response): Promise<any> => {
+app.post("/api/files/:fileId/shares", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   const { fileId } = req.params as { fileId: string };
   const { recipientEmail, password, oneTime } = req.body as {
     recipientEmail?: string;
@@ -361,9 +500,8 @@ app.post("/api/files/:fileId/shares", async (req: Request, res: Response): Promi
   };
 
   try {
-    const file = workspaceFiles.get(fileId);
-    const dbFile = await prisma.file.findUnique({
-      where: { id: fileId },
+    const dbFile = await prisma.file.findFirst({
+      where: { id: fileId, ownerId: req.user?.userId },
       include: { owner: true }
     });
 
@@ -386,39 +524,12 @@ app.post("/api/files/:fileId/shares", async (req: Request, res: Response): Promi
       }
     });
 
-    // Register in shares list of in-memory file for sync
-    if (file) {
-      const newShare: SharedSession = {
-        id: dbShare.id,
-        recipientEmail: dbShare.recipientEmail || "Public Access Link",
-        url: shareUrl,
-        created: "Just now",
-        status: "active",
-        downloadsCount: 0,
-        downloadLimit: dbShare.downloadsLimit,
-      };
-      file.shares.unshift(newShare);
-      workspaceFiles.set(fileId, file);
-    }
-
-    // Register in in-memory share payload map for backward compatibility
-    const sharePayload: SharePayload = {
-      id: token,
-      name: `${dbFile.name}`,
-      size: file ? file.size : `${(dbFile.size / 1024).toFixed(0)} KB`,
-      type: dbFile.mimeType,
-      content: "",
-      requirePassword: !!password,
-      password: password || undefined,
-      oneTimeDownload: !!oneTime,
-    };
-    sharedFilesMap.set(token, sharePayload);
-
     logServerActivity(
       "Generated Share Link",
       `Generated access link for ${dbFile.name} shared with ${recipientEmail || "public link"}`,
       dbFile.name,
-      "Share2"
+      "Share2",
+      req.user?.userId
     );
 
     res.json({ url: shareUrl, shareId: token });
@@ -429,19 +540,40 @@ app.post("/api/files/:fileId/shares", async (req: Request, res: Response): Promi
 });
 
 // Get activities
-app.get("/api/activities", (req: Request, res: Response) => {
-  res.json(activitiesList);
+app.get("/api/activities", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const dbLogs = await prisma.auditLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 20
+    });
+
+    const mappedActivities = dbLogs.map(log => ({
+      id: log.id,
+      time: "Just now",
+      action: log.action,
+      details: log.details,
+      fileName: log.details.split(" ").pop() || "",
+      iconName: "FileText"
+    }));
+
+    res.json(mappedActivities);
+  } catch (err) {
+    console.error("Failed to get activities:", err);
+    res.status(500).json({ error: "Failed to fetch activities." });
+  }
 });
 
 // Log activity
-app.post("/api/activities", (req: Request, res: Response) => {
+app.post("/api/activities", requireAuth, async (req: AuthRequest, res: Response) => {
   const { action, details, target, iconName } = req.body as {
     action: string;
     details: string;
     target: string;
     iconName: string;
   };
-  logServerActivity(action, details, target, iconName);
+  await logServerActivity(action, details, target, iconName, req.user?.userId);
   res.json({ success: true });
 });
 
@@ -568,22 +700,6 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
     
     // Invalidate the cache to ensure next request fetches updated metadata
     await TokenService.invalidateShare(shareId);
-
-    // Sync with in-memory workspaceFiles map if it exists
-    const memoryFile = workspaceFiles.get(dbFile.id);
-    if (memoryFile) {
-      memoryFile.shares = memoryFile.shares.map(s => {
-        if (s.url.endsWith(shareId)) {
-          return {
-            ...s,
-            downloadsCount: newCount,
-            status: isLimitReached ? "revoked" as const : s.status
-          };
-        }
-        return s;
-      });
-      workspaceFiles.set(dbFile.id, memoryFile);
-    }
 
     // Stream and decrypt the file
     const readStream = fs.createReadStream(filePath);
