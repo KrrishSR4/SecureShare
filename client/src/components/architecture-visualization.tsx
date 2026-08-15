@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as d3 from "d3";
 import {
   Globe,
   Server,
@@ -12,6 +11,10 @@ import {
   User,
   CheckCircle2,
   Terminal,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Pause,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,7 +93,17 @@ const NODES = [
   },
 ];
 
-// Helper for nodes position
+const LINKS = [
+  { from: 0, to: 1 },
+  { from: 1, to: 2 },
+  { from: 2, to: 3 },
+  { from: 3, to: 4 },
+  { from: 4, to: 5 },
+  { from: 5, to: 6 },
+  { from: 6, to: 7 },
+  { from: 7, to: 8 },
+];
+
 const getNodePos = (i: number, innerWidth: number, rowHeight: number, isMobile: boolean) => {
   if (isMobile) {
     return { x: innerWidth / 2, y: i * 100 };
@@ -109,12 +122,10 @@ const getNodePos = (i: number, innerWidth: number, rowHeight: number, isMobile: 
 
 export function ArchitectureVisualization() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [inspectedNode, setInspectedNode] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [activeStep, setActiveStep] = useState(0);
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   // Handle Resize
   useEffect(() => {
@@ -131,272 +142,156 @@ export function ArchitectureVisualization() {
     return () => observer.disconnect();
   }, []);
 
+  // Auto-play steps
   useEffect(() => {
-    if (!svgRef.current || dimensions.width === 0) return;
-
-    const width = dimensions.width;
-    const isMobile = width < 768;
-
-    const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
-
-    // We want the SVG to fit exactly inside the container without scrolling
-    const innerWidth = width - margin.left - margin.right;
-    const rowHeight = 160;
-    const innerHeight = isMobile ? NODES.length * 100 : rowHeight * 2;
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
-
-    svg.attr("width", width);
-    svg.attr("height", innerHeight + margin.top + margin.bottom);
-
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // Calculate node positions
-    const nodesData = NODES.map((n, i) => {
-      const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
-      return { ...n, ...pos };
-    });
-
-    // Generate Path
-    let pathString = "";
-    if (isMobile) {
-      pathString = `M ${nodesData[0].x},${nodesData[0].y} L ${nodesData[8].x},${nodesData[8].y}`;
-    } else {
-      const p2 = nodesData[2]; // Row 1 Right
-      const p3 = nodesData[3]; // Row 2 Right
-      const p5 = nodesData[5]; // Row 2 Left
-      const p6 = nodesData[6]; // Row 3 Left
-
-      const r = 40; // Bend radius
-      const bendXRight = innerWidth + 50;
-      const bendXLeft = -50;
-
-      pathString = `M ${nodesData[0].x},${nodesData[0].y} `;
-
-      // Top right curve (downwards)
-      pathString += `L ${bendXRight - r},${p2.y} `;
-      pathString += `Q ${bendXRight},${p2.y} ${bendXRight},${p2.y + r} `;
-      pathString += `L ${bendXRight},${p3.y - r} `;
-      pathString += `Q ${bendXRight},${p3.y} ${bendXRight - r},${p3.y} `;
-
-      // Bottom left curve (downwards)
-      pathString += `L ${bendXLeft + r},${p5.y} `;
-      pathString += `Q ${bendXLeft},${p5.y} ${bendXLeft},${p5.y + r} `;
-      pathString += `L ${bendXLeft},${p6.y - r} `;
-      pathString += `Q ${bendXLeft},${p6.y} ${bendXLeft + r},${p6.y} `;
-
-      // End
-      pathString += `L ${nodesData[8].x},${nodesData[8].y}`;
-    }
-
-    // Base line
-    const path = g
-      .append("path")
-      .attr("d", pathString)
-      .attr("fill", "none")
-      .attr("stroke", "#e5e7eb")
-      .attr("stroke-width", 2);
-
-    // Active line
-    const activePath = g
-      .append("path")
-      .attr("d", pathString)
-      .attr("fill", "none")
-      .attr("stroke", "#10b981")
-      .attr("stroke-width", 3)
-      .attr("stroke-dasharray", function () {
-        const l = (this as SVGPathElement).getTotalLength();
-        return `${l} ${l}`;
-      })
-      .attr("stroke-dashoffset", function () {
-        return (this as SVGPathElement).getTotalLength();
-      });
-
-    // Stream of Data Particles
-    const particlePaths = [
-      // Folder
-      [
-        "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
-      ],
-      // File
-      ["M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z", "M14 2v4a2 2 0 0 0 2 2h4"],
-      // Image (secureshare.png)
-      [
-        "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
-        "M9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
-        "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21",
-      ],
-      // Database (Data)
-      [
-        "M21 5c0 1.657-4.03 3-9 3S3 6.657 3 5s4.03-3 9-3 9 1.343 9 3z",
-        "M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5",
-        "M3 12c0 1.66 4 3 9 3s9-1.34 9-3",
-      ],
-    ];
-
-    const particlesGroup = g.append("g").attr("class", "particles");
-    const numParticles = 8;
-    for (let i = 0; i < numParticles; i++) {
-      const iconPaths = particlePaths[i % particlePaths.length];
-      const p = particlesGroup.append("g").attr("class", `particle-${i}`).attr("opacity", 0.9);
-
-      p.append("circle")
-        .attr("r", 11)
-        .attr("fill", "#ffffff")
-        .attr("stroke", "#10b981")
-        .attr("stroke-width", 1.5)
-        .attr("filter", "drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2))");
-
-      const icon = p
-        .append("g")
-        .attr("fill", "none")
-        .attr("stroke", "#10b981")
-        .attr("stroke-width", 2)
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round")
-        .attr("transform", "translate(-7.5, -7.5) scale(0.62)");
-
-      iconPaths.forEach((d) => icon.append("path").attr("d", d));
-    }
-
-    // Main Packet
-    const packetGroup = g.append("g").attr("class", "packet-group").attr("opacity", 0);
-
-    packetGroup
-      .append("rect")
-      .attr("width", 36)
-      .attr("height", 24)
-      .attr("rx", 12)
-      .attr("x", -18)
-      .attr("y", -12)
-      .attr("fill", "#10b981")
-      .attr("stroke", "#047857")
-      .attr("stroke-width", 1)
-      .attr("filter", "drop-shadow(0 4px 6px rgba(16, 185, 129, 0.4))");
-
-    packetGroup
-      .append("path")
-      .attr(
-        "d",
-        "M12 11h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2zm-2-4a2 2 0 0 1 2 2v2H8V9a2 2 0 0 1 2-2z",
-      )
-      .attr("fill", "white")
-      .attr("transform", "translate(-8, -9) scale(0.8)");
-  }, [dimensions]); // Just draw the static D3 once
-
-  // Re-implement animation with a ref so it reads the latest inspectedNode
-  const inspectedNodeRef = useRef(inspectedNode);
-  const hoveredNodeRef = useRef(hoveredNode);
-  useEffect(() => {
-    inspectedNodeRef.current = inspectedNode;
-    hoveredNodeRef.current = hoveredNode;
-  }, [inspectedNode, hoveredNode]);
-
-  useEffect(() => {
-    if (!svgRef.current || dimensions.width === 0) return;
-
-    const pathNode = d3.select(svgRef.current).select("path").node() as SVGPathElement;
-    if (!pathNode) return;
-
-    const totalLength = pathNode.getTotalLength();
-    let currentT = 0;
-    let lastTime = performance.now();
-
-    const packetGroup = d3.select(svgRef.current).select(".packet-group");
-    const activePath = d3.select(svgRef.current).select("path:nth-child(2)");
-    const particles = d3.select(svgRef.current).selectAll(".particles > g");
-
-    const timer = d3.timer((elapsed) => {
-      const now = performance.now();
-      const delta = now - lastTime;
-      lastTime = now;
-
-      // If paused by click or hover, do not advance T
-      if (!inspectedNodeRef.current && !hoveredNodeRef.current) {
-        currentT += delta / 12000; // 12 seconds per loop
-        if (currentT > 1) currentT = currentT % 1;
-      }
-
-      // We still update graphics even if paused
-      packetGroup.attr("opacity", 1);
-      const p = pathNode.getPointAtLength(currentT * totalLength);
-      packetGroup.attr("transform", `translate(${p.x},${p.y})`);
-      activePath.attr("stroke-dashoffset", (1 - currentT) * totalLength);
-
-      // Animate particles
-      particles.each(function (d, i) {
-        const particleT = (currentT + i * 0.125) % 1;
-        const pt = pathNode.getPointAtLength(particleT * totalLength);
-        d3.select(this).attr("transform", `translate(${pt.x},${pt.y})`);
-      });
-
-      // Determine active node (if not paused)
-      if (!inspectedNodeRef.current && !hoveredNodeRef.current) {
-        let currentActive = null;
-
-        const width = dimensions.width;
-        const isMobile = width < 768;
-        const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
-        const innerWidth = width - margin.left - margin.right;
-        const rowHeight = 160;
-
-        for (let i = 0; i < NODES.length; i++) {
-          const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
-          const x = pos.x + margin.left;
-          const y = pos.y + margin.top;
-
-          const dist = Math.sqrt(
-            Math.pow(p.x + margin.left - x, 2) + Math.pow(p.y + margin.top - y, 2),
-          );
-          if (dist < 50) {
-            currentActive = NODES[i].id;
-            break;
-          }
-        }
-        setActiveNodeId(currentActive);
-      }
-    });
-
-    return () => timer.stop();
-  }, [dimensions]);
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % NODES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   const width = dimensions.width;
   const isMobile = width > 0 && width < 768;
   const isTablet = width >= 768 && width < 1024;
-  const margin = { top: 60, right: isMobile ? 40 : 80, bottom: 60, left: isMobile ? 40 : 80 };
+
+  const cardWidth = isMobile ? 220 : isTablet ? 96 : 120;
+  const cardHeight = isMobile ? 54 : isTablet ? 68 : 80;
+
+  const margin = {
+    top: 40,
+    right: isMobile ? 30 : 80,
+    bottom: 40,
+    left: isMobile ? 30 : 80,
+  };
+
   const innerWidth = width - margin.left - margin.right;
   const rowHeight = 160;
   const innerHeight = isMobile ? NODES.length * 100 : rowHeight * 2;
 
-  // Actual active node for UI
-  const displayNodeId = inspectedNode || activeNodeId;
+  // Actual step index to display details and highlight paths
+  const displayStepIndex = hoveredStep !== null ? hoveredStep : activeStep;
+
+  const nodesData = NODES.map((n, i) => {
+    const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
+    return { ...n, ...pos };
+  });
+
+  const getLinkPath = (
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    isMobile: boolean
+  ) => {
+    const dx = cardWidth / 2;
+    const dy = cardHeight / 2;
+    const gap = 10; // gap to keep arrow tip slightly away from card borders
+
+    if (isMobile) {
+      // Mobile is vertical down
+      return `M ${from.x},${from.y + dy + 2} L ${to.x},${to.y - dy - gap}`;
+    }
+
+    if (Math.abs(from.y - to.y) < 10) {
+      // Horizontal link
+      if (to.x > from.x) {
+        return `M ${from.x + dx + 2},${from.y} L ${to.x - dx - gap},${to.y}`;
+      } else {
+        return `M ${from.x - dx - 2},${from.y} L ${to.x + dx + gap},${to.y}`;
+      }
+    } else {
+      // Vertical link
+      if (to.y > from.y) {
+        return `M ${from.x},${from.y + dy + 2} L ${to.x},${to.y - dy - gap}`;
+      } else {
+        return `M ${from.x},${from.y - dy - 2} L ${to.x},${to.y + dy + gap}`;
+      }
+    }
+  };
+
+  const displayNode = NODES[displayStepIndex];
+  const DisplayIcon = displayNode.icon;
 
   return (
-    <div className="relative w-full mx-auto py-12" ref={containerRef}>
-      {/* Container no longer needs overflow-x-auto because SVG is perfectly constrained to width */}
+    <div className="relative w-full mx-auto py-6" ref={containerRef}>
+      {/* Flowchart Diagram Wrapper */}
       <div
         className="relative w-full"
-        style={{ minHeight: isMobile ? innerHeight + 120 : innerHeight + 180 }}
+        style={{ height: innerHeight + margin.top + margin.bottom }}
       >
-        {/* D3 SVG Background */}
-        <svg ref={svgRef} className="absolute top-0 left-0 pointer-events-none z-0" />
+        {/* SVG Flowchart Lines */}
+        {width > 0 && (
+          <svg
+            width={width}
+            height={innerHeight + margin.top + margin.bottom}
+            className="absolute top-0 left-0 pointer-events-none z-0"
+          >
+            <defs>
+              <marker
+                id="flowchart-arrow"
+                viewBox="0 0 10 10"
+                refX="6"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="currentColor" />
+              </marker>
+            </defs>
+            <g transform={`translate(${margin.left}, ${margin.top})`}>
+              {/* Background links */}
+              {LINKS.map((link, idx) => {
+                const fromNode = nodesData[link.from];
+                const toNode = nodesData[link.to];
+                const pathStr = getLinkPath(fromNode, toNode, isMobile);
+                return (
+                  <path
+                    key={`base-${idx}`}
+                    d={pathStr}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    className="text-zinc-200 dark:text-zinc-800 transition-colors duration-300"
+                  />
+                );
+              })}
 
-        {/* React HTML Nodes */}
-        {dimensions.width > 0 && (
+              {/* Active flow path links overlay */}
+              {LINKS.map((link, idx) => {
+                const fromNode = nodesData[link.from];
+                const toNode = nodesData[link.to];
+                const pathStr = getLinkPath(fromNode, toNode, isMobile);
+                const isPathActive = link.to <= displayStepIndex;
+
+                return (
+                  <path
+                    key={`active-${idx}`}
+                    d={pathStr}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    markerEnd="url(#flowchart-arrow)"
+                    className={cn(
+                      "transition-all duration-300 text-signal",
+                      isPathActive ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+        )}
+
+        {/* HTML Cards Overlay */}
+        {width > 0 && (
           <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-10">
             {NODES.map((node, i) => {
               const pos = getNodePos(i, innerWidth, rowHeight, isMobile);
-
-              // Adjust for margin in HTML overlay
               const x = pos.x + margin.left;
               const y = pos.y + margin.top;
 
-              const isHovered = hoveredNode === node.id;
-              const isInspected = inspectedNode === node.id || isHovered;
-              const isActive = displayNodeId === node.id || isHovered;
-              const showCard = isActive || isInspected;
-
+              const isCurrent = i === displayStepIndex;
+              const isVisited = i < displayStepIndex;
               const Icon = node.icon;
 
               return (
@@ -408,116 +303,86 @@ export function ArchitectureVisualization() {
                     top: y,
                     transform: "translate(-50%, -50%)",
                     pointerEvents: "auto",
-                    zIndex: showCard ? 50 : 10,
+                    zIndex: isCurrent ? 30 : 10,
                   }}
-                  onMouseEnter={() => setHoveredNode(node.id)}
-                  onMouseLeave={() => setHoveredNode(null)}
-                  onClick={() => setInspectedNode(isInspected ? null : node.id)}
+                  onMouseEnter={() => setHoveredStep(i)}
+                  onMouseLeave={() => setHoveredStep(null)}
+                  onClick={() => {
+                    setActiveStep(i);
+                    setIsPlaying(false);
+                  }}
                 >
-                  {/* Node Card */}
                   <div
+                    style={{ width: cardWidth, height: cardHeight }}
                     className={cn(
-                      "relative flex flex-col items-center justify-center rounded-2xl border transition-all duration-300 bg-white cursor-pointer select-none",
-                      isMobile ? "w-56 p-4" : isTablet ? "w-24 p-3" : "w-28 p-4",
-                      isActive
-                        ? "border-signal shadow-[0_0_20px_rgba(16,185,129,0.15)] scale-105"
-                        : "border-border shadow-sm hover:border-ink/20",
-                      isInspected ? "ring-2 ring-signal ring-offset-2" : "",
+                      "relative flex flex-col items-center justify-center rounded-xl border transition-all duration-300 bg-surface-elevated cursor-pointer select-none",
+                      isMobile ? "flex-row justify-start px-4 gap-3" : "p-2",
+                      isCurrent
+                        ? "border-signal shadow-[0_0_15px_rgba(16,185,129,0.25)] scale-105"
+                        : isVisited
+                          ? "border-signal/50 shadow-sm"
+                          : "border-border shadow-sm hover:border-ink/20"
                     )}
                   >
-                    <div className={cn("flex items-center gap-2", isMobile ? "mb-1" : "mb-2")}>
+                    <div className={cn("flex items-center gap-2", isMobile ? "" : "mb-1")}>
                       <Icon
                         className={cn(
-                          "transition-colors duration-300",
-                          isMobile ? "w-5 h-5" : "w-6 h-6",
-                          isActive ? "text-signal" : "text-ink",
+                          "transition-colors duration-300 w-5 h-5",
+                          isCurrent
+                            ? "text-signal animate-pulse"
+                            : isVisited
+                              ? "text-signal/80"
+                              : "text-muted-foreground/60"
                         )}
-                        strokeWidth={isMobile ? 1.5 : 1.2}
+                        strokeWidth={1.5}
                       />
                       {isMobile && (
-                        <span className="font-display text-sm leading-tight text-ink">
-                          {node.title}
-                        </span>
+                        <div className="flex flex-col text-left">
+                          <span
+                            className={cn(
+                              "font-display text-sm leading-tight font-medium",
+                              isCurrent ? "text-signal font-semibold" : "text-ink"
+                            )}
+                          >
+                            {node.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                            {node.desc}
+                          </span>
+                        </div>
                       )}
                     </div>
 
                     {!isMobile && (
                       <div className="text-center">
-                        <div className="font-display text-xs leading-tight mb-1 whitespace-nowrap text-ink">
+                        <div
+                          className={cn(
+                            "font-display text-xs leading-tight font-medium mb-0.5",
+                            isCurrent ? "text-signal font-semibold" : "text-ink"
+                          )}
+                        >
                           {node.title}
                         </div>
-                        <div className="font-kelly text-[10px] text-muted-foreground tracking-wide leading-tight px-1">
+                        <div className="font-kelly text-[9px] text-muted-foreground tracking-wide leading-tight px-1">
                           {node.desc}
                         </div>
                       </div>
                     )}
 
-                    {isMobile && (
-                      <div className="font-kelly text-xs text-muted-foreground tracking-wide leading-tight px-1 text-center">
-                        {node.desc}
-                      </div>
-                    )}
-
-                    {/* Verification Indicator */}
+                    {/* Step indicator in corner */}
                     <div
                       className={cn(
-                        "absolute -top-1.5 -right-1.5 w-5 h-5 bg-signal rounded-full flex items-center justify-center border-2 border-white transition-all duration-300",
-                        isActive ? "opacity-100 scale-100" : "opacity-0 scale-0",
+                        "absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface transition-all duration-300",
+                        isCurrent
+                          ? "opacity-100 scale-100 bg-signal text-white"
+                          : isVisited
+                            ? "opacity-100 scale-100 bg-signal/70 text-white"
+                            : "opacity-100 scale-100 bg-border text-muted-foreground"
                       )}
                     >
-                      <CheckCircle2 className="w-3 h-3 text-white" strokeWidth={3} />
-                    </div>
-                  </div>
-
-                  {/* Floating Hover Card (More engineering focused) */}
-                  <div
-                    className={cn(
-                      "absolute z-50 transition-all duration-300 w-56 bg-surface-elevated border border-border rounded-xl shadow-xl overflow-hidden",
-                      showCard
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-2 pointer-events-none",
-                      isMobile
-                        ? "left-full ml-4 top-1/2 -translate-y-1/2"
-                        : i < 3
-                          ? "top-full mt-4 left-1/2 -translate-x-1/2"
-                          : i < 6
-                            ? "bottom-full mb-4 left-1/2 -translate-x-1/2"
-                            : "top-full mt-4 left-1/2 -translate-x-1/2",
-                    )}
-                  >
-                    <div className="px-4 py-3 border-b border-border bg-mist/50">
-                      <div className="font-display text-sm text-ink flex items-center justify-between">
-                        {node.title}
-                        {isInspected && (
-                          <span className="text-[9px] font-mono bg-signal/20 text-signal px-1.5 py-0.5 rounded-sm">
-                            INSPECTING
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <ul className="space-y-2 mb-4">
-                        {node.details.map((detail, idx) => (
-                          <li
-                            key={idx}
-                            className="flex items-center gap-2 font-kelly text-xs tracking-wide text-muted-foreground"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-signal/60" />
-                            {detail}
-                          </li>
-                        ))}
-                      </ul>
-                      {/* Live Processing Log Mockup */}
-                      <div className="mt-3 pt-3 border-t border-border font-mono text-[9px] text-muted-foreground flex gap-2">
-                        <Terminal className="w-3 h-3 shrink-0" />
-                        <span className="leading-tight">
-                          {isActive ? (
-                            <span className="text-signal type-animation">{node.log}</span>
-                          ) : (
-                            <span className="opacity-50">Waiting for payload...</span>
-                          )}
-                        </span>
-                      </div>
+                      <span className="text-[9px] font-bold font-mono">
+                        {i + 1}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -527,17 +392,125 @@ export function ArchitectureVisualization() {
         )}
       </div>
 
-      {/* Global styles for tiny animations */}
+      {/* Details & Interactive Control Panel */}
+      <div className="mt-4 mx-auto max-w-2xl border border-border bg-surface-elevated rounded-2xl p-5 shadow-md transition-all duration-300">
+        {/* Header section with controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-mist/30 border border-border">
+              <DisplayIcon className="w-5 h-5 text-signal" />
+            </div>
+            <div>
+              <span className="text-[9px] font-mono tracking-widest text-muted-foreground uppercase">
+                Step {displayStepIndex + 1} of {NODES.length}
+              </span>
+              <h3 className="font-display text-base text-ink font-semibold mt-0.5">
+                {displayNode.title}
+              </h3>
+            </div>
+          </div>
+
+          {/* Stepper Buttons */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => {
+                setActiveStep((prev) => (prev - 1 + NODES.length) % NODES.length);
+                setIsPlaying(false);
+              }}
+              className="p-1.5 rounded-lg border border-border hover:bg-mist/30 text-ink/70 hover:text-ink transition-colors"
+              title="Previous Step"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg border flex items-center gap-1.5 font-display text-xs transition-colors",
+                isPlaying
+                  ? "border-signal/30 bg-signal/10 text-signal hover:bg-signal/20"
+                  : "border-border hover:bg-mist/30 text-ink/70 hover:text-ink"
+              )}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" />
+                  <span>Pause Autoplay</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" />
+                  <span>Autoplay</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveStep((prev) => (prev + 1) % NODES.length);
+                setIsPlaying(false);
+              }}
+              className="p-1.5 rounded-lg border border-border hover:bg-mist/30 text-ink/70 hover:text-ink transition-colors"
+              title="Next Step"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Detailed capabilities and simulated terminal */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase block mb-2">
+              Capabilities & Security Details
+            </span>
+            <ul className="space-y-1.5">
+              {displayNode.details.map((detail, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center gap-2 font-kelly text-xs tracking-wide text-ink"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-signal" />
+                  <span>{detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex flex-col">
+            <span className="text-[9px] font-mono tracking-wider text-muted-foreground uppercase block mb-2">
+              Live Console Output
+            </span>
+            <div className="flex-1 bg-[#121214] text-zinc-300 dark:bg-black dark:text-emerald-400 p-3 rounded-xl font-mono text-[10px] border border-border/80 flex items-start gap-2 min-h-[64px]">
+              <Terminal className="w-3.5 h-3.5 text-signal shrink-0 mt-0.5" />
+              <div className="leading-relaxed break-all">
+                <span className="text-zinc-500 mr-1.5">$</span>
+                <span key={displayStepIndex} className="type-animation">
+                  {displayNode.log}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Styles for caretaker blink and typewriter animation */}
       <style>{`
         .type-animation {
           display: inline-block;
           overflow: hidden;
+          border-right: 2px solid #10b981;
           white-space: nowrap;
-          animation: typing 1s steps(30, end);
+          animation: typing 0.6s steps(40, end), blink-caret 0.75s step-end infinite;
+          max-width: 100%;
         }
         @keyframes typing {
-          from { max-width: 0 }
-          to { max-width: 100% }
+          from { width: 0 }
+          to { width: 100% }
+        }
+        @keyframes blink-caret {
+          from, to { border-color: transparent }
+          50% { border-color: #10b981 }
         }
       `}</style>
     </div>
