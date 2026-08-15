@@ -301,7 +301,11 @@ router.get("/github/callback", async (req: Request, res: Response): Promise<any>
   try {
     const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { 
+        "Content-Type": "application/json", 
+        Accept: "application/json",
+        "User-Agent": "SecureShare-Server"
+      },
       body: JSON.stringify({
         client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
@@ -314,12 +318,18 @@ router.get("/github/callback", async (req: Request, res: Response): Promise<any>
     if (!accessToken) throw new Error("No access token from GitHub");
 
     const userRes = await fetch("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { 
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "SecureShare-Server"
+      }
     });
     const userData = await userRes.json();
 
     const emailRes = await fetch("https://api.github.com/user/emails", {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { 
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "SecureShare-Server"
+      }
     });
     const emailData = await emailRes.json();
     const primaryEmailObj = emailData.find((e: any) => e.primary) || emailData[0];
