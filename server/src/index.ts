@@ -91,6 +91,36 @@ const logServerActivity = async (action: string, details: string, target: string
   }
 };
 
+interface AuditLogPayload {
+  shareId?: string;
+  fileName?: string;
+  sharedBy?: string;
+  recipient?: string;
+  action: string;
+  encryption?: string;
+  downloadType?: string;
+  status: string;
+}
+
+const createAuditLog = async (payload: AuditLogPayload) => {
+  try {
+    await prisma.supabaseAuditLog.create({
+      data: {
+        shareId: payload.shareId || null,
+        fileName: payload.fileName || null,
+        sharedBy: payload.sharedBy || null,
+        recipient: payload.recipient || null,
+        action: payload.action,
+        encryption: payload.encryption || null,
+        downloadType: payload.downloadType || null,
+        status: payload.status
+      }
+    });
+  } catch (err) {
+    console.error("Failed to write Supabase audit log:", err);
+  }
+};
+
 const formatBytes = (bytes: number, decimals = 1) => {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -220,6 +250,15 @@ app.post("/api/files", requireAuth, (req: AuthRequest, res: Response): void => {
       res.json(newFile);
     } catch (err) {
       console.error("Encryption error:", err);
+      // Record ENCRYPTION_FAILED in Supabase audit logs
+      await createAuditLog({
+        fileName: fileData.name || info.filename,
+        sharedBy: req.user?.userId || "Unknown",
+        recipient: "None",
+        action: "ENCRYPTION_FAILED",
+        encryption: "AES-256",
+        status: "FAILED"
+      });
       res.status(500).json({ error: "Failed to encrypt and store file." });
     }
   });
@@ -506,6 +545,14 @@ app.post("/api/files/:fileId/shares", requireAuth, async (req: AuthRequest, res:
     });
 
     if (!dbFile) {
+      // Record SHARE_FAILED audit log
+      await createAuditLog({
+        fileName: "Unknown",
+        sharedBy: req.user?.userId || "Unknown",
+        recipient: recipientEmail || "Unknown",
+        action: "SHARE_FAILED",
+        status: "FAILED"
+      });
       return res.status(404).json({ error: "File not found." });
     }
 
@@ -524,6 +571,18 @@ app.post("/api/files/:fileId/shares", requireAuth, async (req: AuthRequest, res:
       }
     });
 
+    // Record FILE_SHARED audit log in Supabase
+    await createAuditLog({
+      shareId: token,
+      fileName: dbFile.name,
+      sharedBy: dbFile.owner.email,
+      recipient: recipientEmail || "Public Access Link",
+      action: "FILE_SHARED",
+      encryption: dbFile.iv ? "AES-256" : "None",
+      downloadType: oneTime ? "ONE_TIME" : "NORMAL",
+      status: "SUCCESS"
+    });
+
     logServerActivity(
       "Generated Share Link",
       `Generated access link for ${dbFile.name} shared with ${recipientEmail || "public link"}`,
@@ -535,26 +594,105 @@ app.post("/api/files/:fileId/shares", requireAuth, async (req: AuthRequest, res:
     res.json({ url: shareUrl, shareId: token });
   } catch (err) {
     console.error("Share generation error:", err);
+    // Record SHARE_FAILED audit log
+    await createAuditLog({
+      fileName: "Unknown",
+      sharedBy: req.user?.userId || "Unknown",
+      recipient: recipientEmail || "Unknown",
+      action: "SHARE_FAILED",
+      status: "FAILED"
+    });
     res.status(500).json({ error: "Failed to generate share link" });
+  }
+});
+
+// Revoke a share link
+app.post("/api/shares/:shareId/revoke", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
+  const { shareId } = req.params as { shareId: string };
+
+  try {
+    const share = await prisma.share.findFirst({
+      where: {
+        token: shareId,
+        file: { ownerId: req.user?.userId }
+      },
+      include: {
+        file: { include: { owner: true } }
+      }
+    });
+
+    if (!share) {
+      return res.status(404).json({ error: "Share not found or unauthorized." });
+    }
+
+    // Set revoked: true
+    await prisma.share.update({
+      where: { id: share.id },
+      data: { revoked: true }
+    });
+
+    // Invalidate Cache-Aside
+    await TokenService.invalidateShare(shareId);
+
+    // Delete temp file from disk
+    const filePath = path.join(process.cwd(), "uploads", share.file.r2Key);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Delete from DB (cascades share deletion)
+    await prisma.file.delete({
+      where: { id: share.fileId }
+    });
+
+    // Record LINK_REVOKED audit log in Supabase
+    await createAuditLog({
+      shareId,
+      fileName: share.file.name,
+      sharedBy: share.file.owner.email,
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "LINK_REVOKED",
+      encryption: share.file.iv ? "AES-256" : "None",
+      status: "SUCCESS"
+    });
+
+    // Record FILE_DELETED audit log in Supabase
+    await createAuditLog({
+      shareId,
+      fileName: share.file.name,
+      sharedBy: share.file.owner.email,
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "FILE_DELETED",
+      encryption: share.file.iv ? "AES-256" : "None",
+      status: "SUCCESS"
+    });
+
+    logServerActivity("Revoked Share Link", `Revoked access link for ${share.file.name}`, share.file.name, "Trash2", req.user?.userId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Revocation error:", err);
+    res.status(500).json({ error: "Failed to revoke share link" });
   }
 });
 
 // Get activities
 app.get("/api/activities", requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.userId;
-    const dbLogs = await prisma.auditLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
+    const user = await prisma.user.findUnique({ where: { id: req.user?.userId } });
+    const email = req.user?.role === "ADMIN" ? undefined : user?.email;
+
+    const dbLogs = await prisma.supabaseAuditLog.findMany({
+      where: email ? { sharedBy: email } : {},
+      orderBy: { timestamp: "desc" },
       take: 20
     });
 
     const mappedActivities = dbLogs.map(log => ({
       id: log.id,
-      time: "Just now",
+      time: log.timestamp.toISOString(),
       action: log.action,
-      details: log.details,
-      fileName: log.details.split(" ").pop() || "",
+      details: `${log.action}: ${log.fileName || "File"} shared with ${log.recipient || "Public"}`,
+      fileName: log.fileName || "",
       iconName: "FileText"
     }));
 
@@ -619,8 +757,6 @@ app.post("/api/shares/:shareId/download", async (req: Request, res: Response): P
       return res.status(status).json({ error });
     }
 
-    // Since POST download usually returns content directly, we can support it if needed.
-    // For our new robust file streaming download, the frontend will call GET /api/shares/:shareId/download.
     res.json({ content: "" });
   } catch (err) {
     console.error("Legacy download error:", err);
@@ -664,40 +800,96 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
   const { shareId } = req.params as { shareId: string };
   const { password } = req.query as { password?: string };
 
+  let dbShare;
   try {
-    const { valid, share, error } = await validateShare(shareId);
-    if (!valid || !share) {
-      const status = error === "owner_inactive" ? 403 : error === "invalid_link" || error === "file_removed" ? 404 : 410;
-      return res.status(status).json({ error });
-    }
+    // Validate share and increment download counter atomically inside a row-locked transaction
+    dbShare = await prisma.$transaction(async (tx) => {
+      const share = await tx.share.findUnique({
+        where: { token: shareId },
+        include: {
+          file: {
+            include: { owner: true }
+          }
+        }
+      });
 
-    // Validate password if required
-    if (share.password && share.password !== password) {
-      return res.status(401).json({ error: "Incorrect password" });
-    }
-
-    const dbFile = share.file;
-    if (!dbFile.iv || !dbFile.authTag) {
-      return res.status(404).json({ error: "File encryption metadata missing" });
-    }
-
-    const filePath = path.join(process.cwd(), "uploads", dbFile.r2Key);
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "File missing on disk" });
-    }
-
-    // Increment download count and check if limit is reached
-    const newCount = share.downloadsCount + 1;
-    const isLimitReached = newCount >= share.downloadsLimit;
-
-    await prisma.share.update({
-      where: { id: share.id },
-      data: {
-        downloadsCount: newCount,
-        revoked: isLimitReached ? true : share.revoked
+      if (!share) {
+        throw new Error("invalid_link");
       }
+
+      if (share.revoked) {
+        throw new Error("link_revoked");
+      }
+
+      if (share.downloadsCount >= share.downloadsLimit) {
+        throw new Error("limit_reached");
+      }
+
+      if (share.expiresAt && new Date() > new Date(share.expiresAt)) {
+        throw new Error("link_expired");
+      }
+
+      if (!share.file.owner.isActive) {
+        throw new Error("owner_inactive");
+      }
+
+      // Increment count
+      return tx.share.update({
+        where: { id: share.id },
+        data: {
+          downloadsCount: { increment: 1 }
+        },
+        include: {
+          file: {
+            include: { owner: true }
+          }
+        }
+      });
     });
-    
+  } catch (err: any) {
+    const errorMsg = err.message || "invalid_link";
+    const status = errorMsg === "owner_inactive" ? 403 : errorMsg === "invalid_link" || errorMsg === "file_removed" ? 404 : 410;
+
+    // Record DOWNLOAD_FAILED or LINK_EXPIRED audit event in Supabase
+    await createAuditLog({
+      shareId,
+      fileName: "Unknown",
+      sharedBy: "Unknown",
+      recipient: "Unknown",
+      action: errorMsg === "link_expired" ? "LINK_EXPIRED" : "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
+
+    return res.status(status).json({ error: errorMsg });
+  }
+
+  // Validate password
+  if (dbShare.password && dbShare.password !== password) {
+    // Record DOWNLOAD_FAILED audit event in Supabase
+    await createAuditLog({
+      shareId: dbShare.token,
+      fileName: dbShare.file.name,
+      sharedBy: dbShare.file.owner.email,
+      recipient: dbShare.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
+    return res.status(401).json({ error: "Incorrect password" });
+  }
+
+  const dbFile = dbShare.file;
+  if (!dbFile.iv || !dbFile.authTag) {
+    return res.status(404).json({ error: "File encryption metadata missing" });
+  }
+
+  const filePath = path.join(process.cwd(), "uploads", dbFile.r2Key);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File missing on disk" });
+  }
+
+  try {
     // Invalidate the cache to ensure next request fetches updated metadata
     await TokenService.invalidateShare(shareId);
 
@@ -709,12 +901,47 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
 
     await EncryptionService.decryptStream(readStream, res, dbFile.iv, dbFile.authTag);
 
+    // Record FILE_DOWNLOADED audit event in Supabase
+    await createAuditLog({
+      shareId: dbShare.token,
+      fileName: dbFile.name,
+      sharedBy: dbFile.owner.email,
+      recipient: dbShare.recipientEmail || "Public Access Link",
+      action: "FILE_DOWNLOADED",
+      encryption: "AES-256",
+      downloadType: dbShare.downloadsLimit === 1 ? "ONE_TIME" : "NORMAL",
+      status: "SUCCESS"
+    });
+
     logServerActivity(
       "Secure Share Downloaded",
       `Decrypted and streamed ${dbFile.name} from secure share link`,
       dbFile.name,
       "Download"
     );
+
+    // Enforce Zero-Persistence policy: delete temporary file if downloads limit reached or one-time download
+    const isLimitReached = dbShare.downloadsCount >= dbShare.downloadsLimit;
+    if (isLimitReached || dbShare.downloadsLimit === 1) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      // Cascade delete Share and File records from DB
+      await prisma.share.delete({ where: { id: dbShare.id } });
+      await prisma.file.delete({ where: { id: dbFile.id } });
+
+      // Record FILE_DELETED audit log in Supabase
+      await createAuditLog({
+        shareId: dbShare.token,
+        fileName: dbFile.name,
+        sharedBy: dbFile.owner.email,
+        recipient: dbShare.recipientEmail || "Public Access Link",
+        action: "FILE_DELETED",
+        encryption: "AES-256",
+        status: "SUCCESS"
+      });
+    }
   } catch (err) {
     console.error("Secure download error:", err);
     if (!res.headersSent) {
@@ -723,11 +950,84 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
   }
 });
 
+const startCleanupInterval = () => {
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      // Find all expired shares
+      const expiredShares = await prisma.share.findMany({
+        where: {
+          expiresAt: { lt: now }
+        },
+        include: {
+          file: {
+            include: { owner: true }
+          }
+        }
+      });
+
+      for (const share of expiredShares) {
+        // Record LINK_EXPIRED in Supabase audit logs
+        await createAuditLog({
+          shareId: share.token,
+          fileName: share.file.name,
+          sharedBy: share.file.owner.email,
+          recipient: share.recipientEmail || "Public Access Link",
+          action: "LINK_EXPIRED",
+          encryption: share.file.iv ? "AES-256" : "None",
+          status: "SUCCESS"
+        });
+
+        // Delete file on disk
+        const filePath = path.join(process.cwd(), "uploads", share.file.r2Key);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+
+        // Delete Share and File
+        await prisma.share.delete({ where: { id: share.id } });
+        await prisma.file.delete({ where: { id: share.fileId } });
+
+        // Record FILE_DELETED audit log in Supabase
+        await createAuditLog({
+          shareId: share.token,
+          fileName: share.file.name,
+          sharedBy: share.file.owner.email,
+          recipient: share.recipientEmail || "Public Access Link",
+          action: "FILE_DELETED",
+          encryption: share.file.iv ? "AES-256" : "None",
+          status: "SUCCESS"
+        });
+      }
+
+      // Clean up orphaned files in uploads that don't match any active DB File record
+      const uploadsDir = path.join(process.cwd(), "uploads");
+      if (fs.existsSync(uploadsDir)) {
+        const filesOnDisk = fs.readdirSync(uploadsDir);
+        const activeFiles = await prisma.file.findMany({
+          select: { r2Key: true }
+        });
+        const activeKeys = new Set(activeFiles.map(f => f.r2Key));
+
+        for (const file of filesOnDisk) {
+          if (!activeKeys.has(file)) {
+            // Delete orphaned file
+            fs.unlinkSync(path.join(uploadsDir, file));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error during scheduled temporary files cleanup:", err);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+};
+
 app.listen(PORT, async () => {
   console.log(`[server]: SecureShare backend running at http://localhost:${PORT}`);
   try {
     await connectPostgres();
     await connectRedis();
+    startCleanupInterval();
   } catch (err) {
     console.error("Server startup connection error:", err);
   }

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
+import { supabase } from "../lib/supabase.js";
 import { verifyAccessToken } from "../utils/tokens.js";
-import { SessionService } from "../services/session.service.js";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -18,16 +18,24 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
   const token = authHeader.split(" ")[1];
 
   try {
-    const payload = verifyAccessToken(token);
-    
-    // Ensure user still exists (utilizes Cache-Aside via SessionService)
-    const user = await SessionService.getCachedUser(payload.userId);
-    if (!user) {
-      return res.status(401).json({ error: "User no longer exists" });
+    // 1. Try validating via Supabase Auth
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (user) {
+      req.user = {
+        userId: user.id,
+        role: (user.app_metadata?.role as string) || "USER"
+      };
+      return next();
     }
+  } catch (err) {
+    // Fallback to custom token verification
+  }
 
+  try {
+    // 2. Fallback to custom JWT tokens (e.g. OAuth flows or local testing session)
+    const payload = verifyAccessToken(token);
     req.user = payload;
-    next();
+    return next();
   } catch (error) {
     return res.status(401).json({ error: "Invalid or expired token" });
   }

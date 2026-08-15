@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma.js";
 import { hashPassword, comparePasswords } from "../utils/passwords.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/tokens.js";
+import { supabase } from "../lib/supabase.js";
 
 import { OAuth2Client } from "google-auth-library";
 
@@ -83,14 +84,24 @@ router.post("/signup", async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    const hashedPassword = await hashPassword(password);
+    // Register user in Supabase Auth via Admin API (pre-confirms email)
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name }
+    });
+
+    if (error || !data.user) {
+      return res.status(400).json({ error: error?.message || "Failed to create user in Supabase Auth." });
+    }
     
-    // Create user (verified by default for now)
-    const user = await prisma.user.create({
+    // Mirror the created user into our local Prisma User schema
+    await prisma.user.create({
       data: {
+        id: data.user.id,
         name,
         email,
-        password: hashedPassword,
         emailVerified: true,
       },
     });
@@ -98,7 +109,7 @@ router.post("/signup", async (req: Request, res: Response): Promise<any> => {
     res.status(201).json({ message: "Account created successfully." });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: (error as any).errors });
+      return res.status(400).json({ error: error.errors });
     }
     res.status(500).json({ error: "Internal server error" });
   }
@@ -108,31 +119,40 @@ router.post("/signin", async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    const isMatch = await comparePasswords(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    const tokenPayload = { userId: user.id, role: user.role };
-    const accessToken = generateAccessToken(tokenPayload);
-    const refreshToken = generateRefreshToken(tokenPayload);
-
-    // Save refresh token hash in DB
-    const refreshTokenHash = await hashPassword(refreshToken);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refreshTokenHash, lastLogin: new Date() },
+    // Verify credentials via Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
 
-    setRefreshCookie(res, refreshToken);
+    if (error || !data.session || !data.user) {
+      return res.status(401).json({ error: error?.message || "Invalid credentials" });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Mirror user locally if missing (e.g. registered externally or seeded directly in Supabase dashboard)
+      user = await prisma.user.create({
+        data: {
+          id: data.user.id,
+          email,
+          name: data.user.user_metadata?.name || email.split("@")[0],
+          emailVerified: true
+        }
+      });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    if (data.session.refresh_token) {
+      setRefreshCookie(res, data.session.refresh_token);
+    }
 
     res.json({
-      accessToken,
+      accessToken: data.session.access_token,
       user: {
         id: user.id,
         name: user.name,
@@ -153,30 +173,16 @@ router.post("/refresh-token", async (req: Request, res: Response): Promise<any> 
   }
 
   try {
-    const payload = verifyRefreshToken(refreshToken);
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-
-    if (!user || !user.refreshTokenHash) {
-      return res.status(401).json({ error: "Invalid refresh token" });
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+    if (error || !data.session) {
+      return res.status(401).json({ error: error?.message || "Invalid refresh token" });
     }
 
-    const isMatch = await comparePasswords(refreshToken, user.refreshTokenHash);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Invalid refresh token" });
+    if (data.session.refresh_token) {
+      setRefreshCookie(res, data.session.refresh_token);
     }
-
-    const tokenPayload = { userId: user.id, role: user.role };
-    const newAccessToken = generateAccessToken(tokenPayload);
-    const newRefreshToken = generateRefreshToken(tokenPayload);
-
-    const newRefreshTokenHash = await hashPassword(newRefreshToken);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refreshTokenHash: newRefreshTokenHash },
-    });
-
-    setRefreshCookie(res, newRefreshToken);
-    res.json({ accessToken: newAccessToken });
+    
+    res.json({ accessToken: data.session.access_token });
   } catch (error) {
     res.status(401).json({ error: "Invalid or expired refresh token" });
   }

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -60,6 +60,21 @@ model AuditLog {
   user      User?    @relation(fields: [userId], references: [id])
   file      File?    @relation(fields: [fileId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model SupabaseAuditLog {
+  id           String   @id @default(uuid())
+  shareId      String?  @map("share_id")
+  fileName     String?  @map("file_name")
+  sharedBy     String?  @map("shared_by")
+  recipient    String?  
+  action       String   
+  encryption   String?  
+  downloadType String?  @map("download_type")
+  timestamp    DateTime @default(now())
+  status       String   
+
+  @@map("audit_logs")
 }
 
 model Share {

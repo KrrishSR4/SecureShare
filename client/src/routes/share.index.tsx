@@ -833,6 +833,21 @@ function WorkspacePage() {
     );
   };
 
+  const handleRevokeShare = (shareToken: string) => {
+    if (!shareToken) return;
+    if (isServerOnline) {
+      fetchWithAuth(`${API_BASE_URL}/api/shares/${shareToken}/revoke`, {
+        method: "POST",
+      })
+        .then((res) => {
+          if (res.ok) {
+            refreshFromServer();
+          }
+        })
+        .catch((err) => console.warn("Failed to revoke share", err));
+    }
+  };
+
   const handleCopyLink = (linkText: string, label: string) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
@@ -1429,9 +1444,9 @@ function WorkspacePage() {
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
                                 <button
-                                  disabled
-                                  className="rounded p-1.5 text-muted-foreground/35 cursor-not-allowed"
-                                  title="Revoke (backend only)"
+                                  onClick={() => handleRevokeShare(s.url.split("/").pop() || "")}
+                                  className="rounded p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                  title="Revoke Link"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
