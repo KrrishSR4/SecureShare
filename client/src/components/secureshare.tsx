@@ -430,15 +430,9 @@ export function Nav() {
             <>
               <Link
                 to="/auth/signin"
-                className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-ink md:inline"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/auth/signup"
                 className="inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-background transition-colors hover:bg-ink/90"
               >
-                Sign up <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                Get Started <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
               </Link>
             </>
           )}

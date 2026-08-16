@@ -1,73 +1,30 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Eye, EyeOff, Github, Mail } from "lucide-react";
-import { toast } from "sonner";
-import api from "@/lib/api";
-import { useAuthStore } from "@/lib/auth-store";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Github } from "lucide-react";
 
 export const Route = createFileRoute("/auth/signin")({
   component: SignInPage,
 });
 
-const signinSchema = z.object({
-  email: z.string().email("Please enter a valid email address."),
-  password: z.string().min(1, "Password is required."),
-});
-
-type SigninForm = z.infer<typeof signinSchema>;
-
 function SignInPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SigninForm>({
-    resolver: zodResolver(signinSchema),
-  });
-
-  const onSubmit = async (data: SigninForm) => {
-    setIsLoading(true);
-    try {
-      const res = await api.post("/auth/signin", data);
-      const { user, accessToken } = res.data;
-      setAuth(user, accessToken);
-      toast.success("Logged in successfully");
-      navigate({ to: "/" });
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      toast.error(err.response?.data?.error || "Failed to sign in");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleOAuth = (provider: "google" | "github") => {
     window.location.href = `http://localhost:4000/api/auth/${provider}`;
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-          Welcome back
+    <div className="w-full max-w-md mx-auto">
+      <div className="mb-8 text-center">
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+          Get Started
         </h1>
-        <p className="text-muted-foreground mt-2">
-          Enter your details to access your secure workspace.
+        <p className="text-muted-foreground mt-3 text-sm">
+          Select an identity provider to access your secure workspace.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="flex flex-col gap-4">
         <button
           onClick={() => handleOAuth("google")}
-          className="flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground shadow-sm"
+          className="flex items-center justify-center gap-3 w-full rounded-xl border border-border bg-background/50 backdrop-blur-sm px-4 py-3.5 text-sm font-semibold text-ink transition-all hover:bg-accent hover:text-accent-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 duration-300"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -87,118 +44,16 @@ function SignInPage() {
               fill="#EA4335"
             />
           </svg>
-          Google
+          Continue with Google
         </button>
         <button
           onClick={() => handleOAuth("github")}
-          className="flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground shadow-sm"
+          className="flex items-center justify-center gap-3 w-full rounded-xl border border-border bg-background/50 backdrop-blur-sm px-4 py-3.5 text-sm font-semibold text-ink transition-all hover:bg-accent hover:text-accent-foreground shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 duration-300"
         >
           <Github className="h-5 w-5" />
-          GitHub
+          Continue with GitHub
         </button>
       </div>
-
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Email address
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-            <input
-              {...register("email")}
-              className="flex h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              placeholder="name@example.com"
-              type="email"
-              autoComplete="email"
-            />
-          </div>
-          {errors.email && (
-            <p className="text-sm text-red-500 font-medium">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium leading-none">Password</label>
-            <Link
-              to="/auth/forgot-password"
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-          <div className="relative">
-            <input
-              {...register("password")}
-              className="flex h-11 w-full rounded-xl border border-input bg-background pl-4 pr-10 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              placeholder="••••••••"
-              type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="text-sm text-red-500 font-medium">{errors.password.message}</p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="inline-flex items-center justify-center w-full rounded-xl bg-primary h-11 px-8 text-sm font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Signing in...
-            </span>
-          ) : (
-            "Sign In"
-          )}
-        </button>
-      </form>
-
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        Don't have an account?{" "}
-        <Link to="/auth/signup" className="font-medium text-primary hover:underline">
-          Sign up
-        </Link>
-      </p>
     </div>
   );
 }
