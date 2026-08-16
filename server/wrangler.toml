@@ -5,3 +5,6 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 NODE_ENV = "production"
+FRONTEND_URL = "https://secureshare-frontend-dev.pages.dev"
+GOOGLE_CLIENT_ID = "99861091790-hfhln1sf4coagbpt15mm5v4hopbqu5dm.apps.googleusercontent.com"
+GITHUB_CLIENT_ID = "Ov23lieHfdnNxJV0Rnfn"
