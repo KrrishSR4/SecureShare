@@ -1,0 +1,79 @@
+name: Trivy Security Scan & SBOM
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Run weekly every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  security-scan:
+    name: Trivy Security Scan & SBOM Generation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.2.2
+        with:
+          version: "v0.59.1"
+
+      - name: Scan IaC & Configuration (Dockerfiles & Compose)
+        run: |
+          echo "Scanning IaC and configurations..."
+          trivy config --severity CRITICAL,HIGH,MEDIUM,LOW --format table .
+          trivy config --severity CRITICAL,HIGH --exit-code 1 .
+
+      - name: Scan Filesystem & Dependencies
+        run: |
+          echo "Scanning filesystem dependencies..."
+          trivy fs --severity CRITICAL,HIGH,MEDIUM,LOW --format table --skip-dirs node_modules,dist,client/dist,server/dist .
+          trivy fs --severity CRITICAL,HIGH --exit-code 1 --skip-dirs node_modules,dist,client/dist,server/dist .
+
+      - name: Generate Application SBOM (CycloneDX JSON)
+        run: |
+          echo "Generating Application CycloneDX SBOM..."
+          mkdir -p sbom-artifacts
+          trivy fs --format cyclonedx --output sbom-artifacts/secureshare-fs-sbom.cdx.json --skip-dirs node_modules,dist,client/dist,server/dist .
+
+      - name: Build Docker Images for Scanning
+        run: |
+          echo "Building Server Docker image..."
+          docker build -t secureshare-server:latest -f server/Dockerfile server
+          echo "Building Client Docker image..."
+          docker build -t secureshare-client:latest -f client/Dockerfile client
+
+      - name: Scan Server Docker Image
+        run: |
+          echo "Scanning Server Docker image..."
+          trivy image --severity CRITICAL,HIGH,MEDIUM,LOW --format table secureshare-server:latest
+          trivy image --severity CRITICAL,HIGH --exit-code 1 secureshare-server:latest
+
+      - name: Scan Client Docker Image
+        run: |
+          echo "Scanning Client Docker image..."
+          trivy image --severity CRITICAL,HIGH,MEDIUM,LOW --format table secureshare-client:latest
+          trivy image --severity CRITICAL,HIGH --exit-code 1 secureshare-client:latest
+
+      - name: Generate Docker Images SBOMs (CycloneDX JSON)
+        run: |
+          echo "Generating Docker Images CycloneDX SBOMs..."
+          trivy image --format cyclonedx --output sbom-artifacts/secureshare-server-image-sbom.cdx.json secureshare-server:latest
+          trivy image --format cyclonedx --output sbom-artifacts/secureshare-client-image-sbom.cdx.json secureshare-client:latest
+
+      - name: Upload SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: secureshare-sbom
+          path: sbom-artifacts/
+          retention-days: 30
