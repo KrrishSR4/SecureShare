@@ -8,11 +8,7 @@ import busboy from "busboy";
 import fs from "fs";
 import path from "path";
 import prisma, { connectPostgres } from "./config/postgres.js";
-import { connectRedis } from "./config/redis.js";
 import { DatabaseService } from "./services/database.service.js";
-import { RedisService } from "./services/redis.service.js";
-import { CacheService } from "./services/cache.service.js";
-import { TokenService } from "./services/token.service.js";
 import { EncryptionService } from "./lib/encryption.service.js";
 import crypto from "crypto";
 
@@ -135,12 +131,9 @@ logServerActivity("System Started", "SecureShare cloud node initialized successf
 
 app.get("/api/health", async (req: Request, res: Response) => {
   const dbAlive = await DatabaseService.isAlive();
-  const redisAlive = RedisService.isAlive();
   res.json({
     status: dbAlive ? "ok" : "error",
     databaseConnected: dbAlive,
-    redisConnected: redisAlive,
-    cacheActive: redisAlive,
     timestamp: new Date().toISOString(),
   });
 });
@@ -466,14 +459,6 @@ app.delete("/api/trash/:fileId/permanent", requireAuth, async (req: AuthRequest,
       return res.status(404).json({ error: "File not found in trash." });
     }
 
-    // Find all shares for this file to invalidate their cache
-    const fileShares = await prisma.share.findMany({
-      where: { fileId }
-    });
-    for (const share of fileShares) {
-      await TokenService.invalidateShare(share.token);
-    }
-
     // Delete file from disk if it exists
     const filePath = path.join(process.cwd(), "uploads", file.r2Key);
     if (fs.existsSync(filePath)) {
@@ -499,8 +484,16 @@ async function validateShare(token: string) {
     return { valid: false, error: "invalid_link" };
   }
 
-  // Utilizing Cache-Aside Pattern via TokenService
-  const share = await TokenService.getCachedShare(token);
+  const share = await prisma.share.findUnique({
+    where: { token },
+    include: {
+      file: {
+        include: {
+          owner: true,
+        },
+      },
+    },
+  });
 
   if (!share) {
     return { valid: false, error: "invalid_link" };
@@ -630,9 +623,6 @@ app.post("/api/shares/:shareId/revoke", requireAuth, async (req: AuthRequest, re
       where: { id: share.id },
       data: { revoked: true }
     });
-
-    // Invalidate Cache-Aside
-    await TokenService.invalidateShare(shareId);
 
     // Delete temp file from disk
     const filePath = path.join(process.cwd(), "uploads", share.file.r2Key);
@@ -890,9 +880,6 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
   }
 
   try {
-    // Invalidate the cache to ensure next request fetches updated metadata
-    await TokenService.invalidateShare(shareId);
-
     // Stream and decrypt the file
     const readStream = fs.createReadStream(filePath);
     
@@ -1026,7 +1013,6 @@ app.listen(PORT, async () => {
   console.log(`[server]: SecureShare backend running at http://localhost:${PORT}`);
   try {
     await connectPostgres();
-    await connectRedis();
     startCleanupInterval();
   } catch (err) {
     console.error("Server startup connection error:", err);
