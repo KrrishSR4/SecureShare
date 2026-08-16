@@ -14,29 +14,36 @@ jobs:
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]' || github.event_name == 'workflow_dispatch'
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Approve and Auto-Merge PRs
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Batch processing all open Dependabot PRs..."
+            echo "Batch processing all open Dependabot PRs for repo: $GH_REPO..."
             # Get list of open PR numbers from dependabot
-            prs=$(gh pr list --app dependabot --state open --json number -q '.[].number')
+            prs=$(gh pr list --state open --json number,author -q '.[] | select(.author.login | contains("dependabot")) | .number')
+            
             if [ -z "$prs" ]; then
-              prs=$(gh pr list --author "app/dependabot" --state open --json number -q '.[].number')
-            fi
-            if [ -z "$prs" ]; then
-              prs=$(gh pr list --state open --json number,author -q '.[] | select(.author.login | contains("dependabot")) | .number')
+              echo "No open Dependabot PRs found."
+              exit 0
             fi
 
+            echo "Found open Dependabot PRs: $prs"
+
             for pr in $prs; do
-              echo "Reviewing and approving PR #$pr..."
-              gh pr review "$pr" --approve || true
-              echo "Enabling auto-merge on PR #$pr..."
-              gh pr merge "$pr" --auto --squash || gh pr merge "$pr" --squash || true
+              echo "Processing PR #$pr..."
+              # Approve the PR
+              gh pr review "$pr" --approve || echo "Could not approve PR #$pr (might already be approved)"
+              
+              # Try auto-merge with squash, or direct squash merge if eligible
+              gh pr merge "$pr" --auto --squash || gh pr merge "$pr" --squash || echo "PR #$pr cannot be merged right now (checks might still be running or failing)"
             done
           else
             echo "Processing single PR: ${{ github.event.pull_request.html_url }}"
-            gh pr review "${{ github.event.pull_request.html_url }}" --approve
-            gh pr merge "${{ github.event.pull_request.html_url }}" --auto --squash || gh pr merge "${{ github.event.pull_request.html_url }}" --squash || true
+            gh pr review "${{ github.event.pull_request.number }}" --approve || true
+            gh pr merge "${{ github.event.pull_request.number }}" --auto --squash || gh pr merge "${{ github.event.pull_request.number }}" --squash || true
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
