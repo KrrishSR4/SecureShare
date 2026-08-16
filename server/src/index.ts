@@ -159,7 +159,7 @@ app.get("/api/files", requireAuth, async (req: AuthRequest, res: Response) => {
       }
     });
 
-    const mappedFiles: WorkspaceFile[] = dbFiles.map((f) => ({
+    const mappedFiles: WorkspaceFile[] = dbFiles.map((f: any) => ({
       id: f.id,
       name: f.name,
       extension: f.name.split('.').pop() || "bin",
@@ -169,7 +169,7 @@ app.get("/api/files", requireAuth, async (req: AuthRequest, res: Response) => {
       owner: f.owner.name || f.owner.email,
       status: "completed",
       type: f.mimeType,
-      shares: f.shares.map((s) => ({
+      shares: f.shares.map((s: any) => ({
         id: s.id,
         recipientEmail: s.recipientEmail || "Public Access Link",
         url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/share/${s.token}`,
@@ -384,7 +384,7 @@ app.get("/api/trash", requireAuth, async (req: AuthRequest, res: Response) => {
       }
     });
 
-    const mappedFiles = dbFiles.map(f => ({
+    const mappedFiles = dbFiles.map((f: any) => ({
       id: f.id,
       name: f.name,
       extension: f.name.split('.').pop() || "bin",
@@ -677,7 +677,7 @@ app.get("/api/activities", requireAuth, async (req: AuthRequest, res: Response) 
       take: 20
     });
 
-    const mappedActivities = dbLogs.map(log => ({
+    const mappedActivities = dbLogs.map((log: any) => ({
       id: log.id,
       time: log.timestamp.toISOString(),
       action: log.action,
@@ -793,7 +793,7 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
   let dbShare;
   try {
     // Validate share and increment download counter atomically inside a row-locked transaction
-    dbShare = await prisma.$transaction(async (tx) => {
+    dbShare = await prisma.$transaction(async (tx: any) => {
       const share = await tx.share.findUnique({
         where: { token: shareId },
         include: {
@@ -994,7 +994,7 @@ const startCleanupInterval = () => {
         const activeFiles = await prisma.file.findMany({
           select: { r2Key: true }
         });
-        const activeKeys = new Set(activeFiles.map(f => f.r2Key));
+        const activeKeys = new Set(activeFiles.map((f: any) => f.r2Key));
 
         for (const file of filesOnDisk) {
           if (!activeKeys.has(file)) {
