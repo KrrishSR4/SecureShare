@@ -123,7 +123,7 @@ function WorkspacePage() {
   const fetchWithAuth = (url: string, options: RequestInit = {}) => {
     const headers = {
       ...options.headers,
-      ...(accessToken ? { "Authorization": `Bearer ${accessToken}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     };
     return window.fetch(url, { ...options, headers });
   };
@@ -1027,7 +1027,9 @@ function WorkspacePage() {
             </div>
             <div className="flex-1 min-w-0">
               <h5 className="text-xs font-semibold text-ink truncate">{user?.name || "User"}</h5>
-              <p className="text-[10px] text-muted-foreground truncate">{user?.email || "user@secureshare.io"}</p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {user?.email || "user@secureshare.io"}
+              </p>
             </div>
           </div>
         </aside>
@@ -1444,7 +1446,9 @@ function WorkspacePage() {
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
                                 <button
-                                  onClick={() => handleRevokeShare(s.url.split("/").pop() || "")}
+                                  onClick={() =>
+                                    handleRevokeShare(share.url.split("/").pop() || "")
+                                  }
                                   className="rounded p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
                                   title="Revoke Link"
                                 >

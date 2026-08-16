@@ -150,9 +150,9 @@ const getNodePos = (i: number, innerWidth: number, rowHeight: number, isMobile: 
 
 const isLinkActive = (link: { from: number; to: number }, activeIndex: number) => {
   if (activeIndex === 0) return false;
-  
+
   const { from, to } = link;
-  
+
   if (activeIndex === 1) {
     return from === 0 && to === 1;
   }
@@ -178,7 +178,7 @@ const isLinkActive = (link: { from: number; to: number }, activeIndex: number) =
   if (activeIndex === 8) {
     return true;
   }
-  
+
   return false;
 };
 
@@ -242,7 +242,7 @@ export function ArchitectureVisualization() {
   const getLinkPath = (
     from: { x: number; y: number },
     to: { x: number; y: number },
-    isMobile: boolean
+    isMobile: boolean,
   ) => {
     const dx = cardWidth / 2;
     const dy = cardHeight / 2;
@@ -298,10 +298,7 @@ export function ArchitectureVisualization() {
   return (
     <div className="relative w-full mx-auto py-6" ref={containerRef}>
       {/* Flowchart Diagram Wrapper */}
-      <div
-        className="relative w-full"
-        style={{ height: innerHeight + margin.top + margin.bottom }}
-      >
+      <div className="relative w-full" style={{ height: innerHeight + margin.top + margin.bottom }}>
         {/* SVG Flowchart Lines */}
         {width > 0 && (
           <svg
@@ -345,7 +342,7 @@ export function ArchitectureVisualization() {
                 const fromNode = nodesData[link.from];
                 const toNode = nodesData[link.to];
                 const pathStr = getLinkPath(fromNode, toNode, isMobile);
-                
+
                 const isPathActive = isMobile
                   ? link.to <= displayStepIndex
                   : isLinkActive(link, displayStepIndex);
@@ -360,7 +357,7 @@ export function ArchitectureVisualization() {
                     markerEnd="url(#flowchart-arrow)"
                     className={cn(
                       "transition-all duration-300 text-signal",
-                      isPathActive ? "opacity-100" : "opacity-0"
+                      isPathActive ? "opacity-100" : "opacity-0",
                     )}
                   />
                 );
@@ -408,7 +405,7 @@ export function ArchitectureVisualization() {
                         ? "border-signal shadow-[0_0_15px_rgba(16,185,129,0.25)] scale-105"
                         : isVisited
                           ? "border-signal/50 shadow-sm"
-                          : "border-border shadow-sm hover:border-ink/20"
+                          : "border-border shadow-sm hover:border-ink/20",
                     )}
                   >
                     <div className={cn("flex items-center gap-2", isMobile ? "" : "mb-1")}>
@@ -419,7 +416,7 @@ export function ArchitectureVisualization() {
                             ? "text-signal animate-pulse"
                             : isVisited
                               ? "text-signal/80"
-                              : "text-muted-foreground/60"
+                              : "text-muted-foreground/60",
                         )}
                         strokeWidth={1.5}
                       />
@@ -428,7 +425,7 @@ export function ArchitectureVisualization() {
                           <span
                             className={cn(
                               "font-display text-sm leading-tight font-medium",
-                              isCurrent ? "text-signal font-semibold" : "text-ink"
+                              isCurrent ? "text-signal font-semibold" : "text-ink",
                             )}
                           >
                             {node.title}
@@ -445,7 +442,7 @@ export function ArchitectureVisualization() {
                         <div
                           className={cn(
                             "font-display text-xs leading-tight font-medium mb-0.5",
-                            isCurrent ? "text-signal font-semibold" : "text-ink"
+                            isCurrent ? "text-signal font-semibold" : "text-ink",
                           )}
                         >
                           {node.title}
@@ -464,12 +461,10 @@ export function ArchitectureVisualization() {
                           ? "opacity-100 scale-100 bg-signal text-white"
                           : isVisited
                             ? "opacity-100 scale-100 bg-signal/70 text-white"
-                            : "opacity-100 scale-100 bg-border text-muted-foreground"
+                            : "opacity-100 scale-100 bg-border text-muted-foreground",
                       )}
                     >
-                      <span className="text-[9px] font-bold font-mono">
-                        {i + 1}
-                      </span>
+                      <span className="text-[9px] font-bold font-mono">{i + 1}</span>
                     </div>
                   </div>
                 </div>
@@ -516,7 +511,7 @@ export function ArchitectureVisualization() {
                 "px-3 py-1.5 rounded-lg border flex items-center gap-1.5 font-display text-xs transition-colors",
                 isPlaying
                   ? "border-signal/30 bg-signal/10 text-signal hover:bg-signal/20"
-                  : "border-border hover:bg-mist/30 text-ink/70 hover:text-ink"
+                  : "border-border hover:bg-mist/30 text-ink/70 hover:text-ink",
               )}
             >
               {isPlaying ? (

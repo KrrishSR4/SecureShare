@@ -109,7 +109,7 @@ router.post("/signup", async (req: Request, res: Response): Promise<any> => {
     res.status(201).json({ message: "Account created successfully." });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     res.status(500).json({ error: "Internal server error" });
   }

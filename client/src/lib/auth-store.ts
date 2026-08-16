@@ -6,6 +6,7 @@ export interface User {
   email: string;
   profilePictureUrl: string | null;
   role: string;
+  oauthProvider?: string | null;
 }
 
 interface AuthState {

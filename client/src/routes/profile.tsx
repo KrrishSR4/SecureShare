@@ -89,7 +89,7 @@ function ProfilePage() {
                     <label className="text-sm font-medium text-foreground">Full Name</label>
                     <input
                       type="text"
-                      defaultValue={user.name}
+                      defaultValue={user.name || ""}
                       className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm transition-colors focus:border-ink focus:outline-none focus:ring-1 focus:ring-ink"
                     />
                   </div>
