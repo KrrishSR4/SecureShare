@@ -103,5 +103,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Install Linux Native Bindings for Rolldown
+        run: npm install --no-save @rolldown/binding-linux-x64-gnu
+
       - name: Run Production Build
         run: npm run build
