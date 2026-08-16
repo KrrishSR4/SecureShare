@@ -1,0 +1,5 @@
+cloudflare_api_token  = "your_prod_cloudflare_api_token"
+cloudflare_account_id = "your_prod_cloudflare_account_id"
+environment           = "prod"
+project_name          = "secureshare"
+production_branch     = "main"

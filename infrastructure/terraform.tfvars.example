@@ -1,0 +1,9 @@
+# Example Terraform variables for SecureShare
+# Copy this file to terraform.tfvars or use environments/*.tfvars
+
+cloudflare_api_token  = "your_cloudflare_api_token_here"
+cloudflare_account_id = "your_cloudflare_account_id_here"
+cloudflare_zone_id    = "your_cloudflare_zone_id_here" # Optional
+environment           = "dev"
+project_name          = "secureshare"
+production_branch     = "main"
