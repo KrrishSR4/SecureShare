@@ -6,6 +6,7 @@
     "server"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate --workspace=secureshare-server",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:unit": "npm run test:unit --workspaces --if-present",
