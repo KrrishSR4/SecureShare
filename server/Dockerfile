@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install && npm cache clean --force
 
 # Copy source code and Prisma schema
 COPY . .
