@@ -15,7 +15,7 @@ jobs:
     if: github.actor == 'dependabot[bot]' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Approve and Auto-Merge PRs
         run: |
