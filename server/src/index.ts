@@ -798,7 +798,8 @@ app.post("/api/shares/:shareId/decrypt", async (req: Request, res: Response): Pr
 // Streams file, Updates download counter, Revokes link if necessary
 app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Promise<any> => {
   const { shareId } = req.params as { shareId: string };
-  const { password } = req.query as { password?: string };
+  const passwordHeader = req.header("x-share-password");
+  const password = typeof passwordHeader === "string" ? passwordHeader : undefined;
 
   let dbShare;
   try {
