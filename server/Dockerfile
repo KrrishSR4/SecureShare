@@ -15,6 +15,10 @@ RUN npx prisma generate
 # Build the TypeScript code
 RUN npm run build
 
+# Set proper directory ownership and switch to non-root user
+RUN chown -R node:node /app
+USER node
+
 EXPOSE 4000
 
 # Run database migrations before starting the server

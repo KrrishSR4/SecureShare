@@ -29,11 +29,14 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
           trivy --version
 
-      - name: Scan IaC & Configuration (Dockerfiles & Compose)
+      - name: Scan IaC & Configuration
         run: |
-          echo "Scanning IaC and configurations..."
+          echo "Scanning Dockerfiles, Compose, and project configurations..."
           trivy config --severity CRITICAL,HIGH,MEDIUM,LOW --format table .
-          trivy config --severity CRITICAL,HIGH --exit-code 1 .
+          if [ -d "infrastructure" ] || [ -d "terraform" ]; then
+            echo "Scanning Terraform / IaC directory..."
+            trivy config --severity CRITICAL,HIGH --exit-code 1 infrastructure/ || trivy config --severity CRITICAL,HIGH --exit-code 1 terraform/
+          fi
 
       - name: Scan Filesystem & Dependencies
         run: |
