@@ -41,10 +41,11 @@ interface SharePayload {
   createdAt?: string;
 }
 
-const API_BASE_URL =
-  typeof window !== "undefined"
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? (import.meta.env.VITE_API_URL as string).replace(/\/api$/, "")
+  : (typeof window !== "undefined"
     ? `http://${window.location.hostname}:4000`
-    : "http://localhost:4000";
+    : "http://localhost:4000");
 
 function ShareDownloadPage() {
   const { shareId } = Route.useParams();

@@ -158,7 +158,9 @@ function WorkspacePage() {
   const [renameTarget, setRenameTarget] = useState<WorkspaceFile | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
-  const API_BASE_URL = `http://${window.location.hostname}:4000`;
+  const API_BASE_URL = import.meta.env.VITE_API_URL 
+    ? (import.meta.env.VITE_API_URL as string).replace(/\/api$/, "") 
+    : `http://${window.location.hostname}:4000`;
 
   // Preview States
   const [previewModalOpen, setPreviewModalOpen] = useState(false);

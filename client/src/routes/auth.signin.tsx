@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Github } from "lucide-react";
+import { API_URL } from "../lib/api";
 
 export const Route = createFileRoute("/auth/signin")({
   component: SignInPage,
@@ -7,7 +8,7 @@ export const Route = createFileRoute("/auth/signin")({
 
 function SignInPage() {
   const handleOAuth = (provider: "google" | "github") => {
-    window.location.href = `http://localhost:4000/api/auth/${provider}`;
+    window.location.href = `${API_URL}/auth/${provider}`;
   };
 
   return (
