@@ -11,8 +11,8 @@
     "db:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'No server linting configured'",
-    "test:unit": "node --import tsx --test src/**/*.unit.ts",
-    "test:integration": "node --import tsx --test src/**/*.integration.ts"
+    "test:unit": "node --import tsx --test src/index.unit.ts",
+    "test:integration": "node --import tsx --test src/index.integration.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
