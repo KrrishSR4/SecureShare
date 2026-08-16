@@ -11,8 +11,11 @@ const redisClient = createClient({
   password: redisPassword,
   socket: {
     reconnectStrategy: (retries) => {
+      if (retries > 5) {
+        console.warn("[Redis] Caching disabled: Max connection attempts reached.");
+        return new Error("Max reconnect attempts reached");
+      }
       console.warn(`[Redis] Connection lost. Reconnect attempt #${retries}`);
-      // Reconnect with exponential backoff cap at 3000ms
       return Math.min(retries * 100, 3000);
     },
   },
