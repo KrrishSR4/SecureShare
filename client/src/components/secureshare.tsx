@@ -1989,7 +1989,7 @@ export function LoadSequence() {
           <img
             src="/secureshare123.png"
             alt="SecureShare Logo"
-            className="relative h-40 w-40 md:h-52 md:w-52 object-contain drop-shadow-2xl z-10"
+            className="relative h-28 w-28 sm:h-40 sm:w-40 md:h-52 md:w-52 object-contain drop-shadow-2xl z-10"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
@@ -2001,7 +2001,7 @@ export function LoadSequence() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-            className="font-display text-[4rem] md:text-[7rem] leading-none font-black tracking-wider drop-shadow-sm bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent"
+            className="font-display text-4xl sm:text-6xl md:text-[7rem] leading-none font-black tracking-wider drop-shadow-sm bg-gradient-to-r from-ink to-signal bg-clip-text text-transparent"
           >
             SecureShare
           </motion.h1>
@@ -2010,7 +2010,7 @@ export function LoadSequence() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-            className="font-kelly text-base md:text-xl text-muted-foreground tracking-widest text-balance pt-2"
+            className="font-kelly text-xs sm:text-base md:text-xl text-muted-foreground tracking-widest text-balance pt-2"
           >
             Data sharing without trusting anyone.
           </motion.p>
