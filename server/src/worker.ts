@@ -461,6 +461,16 @@ app.get("/api/activities", authMiddleware, async (c) => {
   return c.json(mappedLogs);
 });
 
+app.post("/api/activities", authMiddleware, async (c) => {
+  const body = await c.req.json();
+  const supabase = getSupabase(c);
+  const user = await getAuthUser(c);
+  if (!user) return c.json({ error: "User not found" }, 401);
+
+  await logActivity(supabase, body.action, body.details, user.id);
+  return c.json({ success: true });
+});
+
 app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
   const fileId = c.req.param("fileId");
   const body = await c.req.json();
@@ -480,6 +490,7 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
     downloadsLimit: body.oneTimeDownload ? 1 : 5,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     revoked: false,
     downloadsCount: 0
   }).select().single();
