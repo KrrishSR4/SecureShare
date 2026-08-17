@@ -512,8 +512,8 @@ app.get("/api/shares/:token", async (c) => {
   const token = c.req.param("token");
   const supabase = getSupabase(c);
   
-  const { data: share } = await supabase.from('Share').select('*, File(*)').eq('token', token).single();
-  if (!share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
+  const { data: share, error } = await supabase.from('Share').select('*, File(*, User(*))').eq('token', token).single();
+  if (error || !share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
     return c.json({ error: "invalid_link" }, 404);
   }
   if (share.downloadsCount >= share.downloadsLimit) {
@@ -521,11 +521,46 @@ app.get("/api/shares/:token", async (c) => {
   }
 
   return c.json({
-    id: share.id,
-    fileName: share.File.name,
-    fileSize: share.File.size,
+    id: share.token,
+    name: share.File.name,
+    size: `${(share.File.size / 1024).toFixed(0)} KB`,
+    type: share.File.mimeType,
+    requirePassword: !!share.password,
+    oneTime: share.downloadsLimit === 1,
     expiresAt: share.expiresAt,
-    oneTimeDownload: share.downloadsLimit === 1
+    downloadsCount: share.downloadsCount,
+    downloadsLimit: share.downloadsLimit,
+    remainingDownloads: share.downloadsLimit - share.downloadsCount,
+    createdBy: share.File.User?.name || share.File.User?.email || "Unknown",
+    createdAt: share.createdAt
+  });
+});
+
+app.post("/api/shares/:token/decrypt", async (c) => {
+  const token = c.req.param("token");
+  const body = await c.req.json();
+  const supabase = getSupabase(c);
+
+  const { data: share, error } = await supabase.from('Share').select('*, File(*, User(*))').eq('token', token).single();
+  if (error || !share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
+    return c.json({ error: "invalid_link" }, 404);
+  }
+  if (share.downloadsCount >= share.downloadsLimit) {
+    return c.json({ error: "invalid_link" }, 404);
+  }
+
+  if (share.password && share.password !== body.password) {
+    return c.json({ error: "Incorrect password" }, 401);
+  }
+
+  return c.json({
+    id: share.token,
+    name: share.File.name,
+    size: `${(share.File.size / 1024).toFixed(0)} KB`,
+    type: share.File.mimeType,
+    content: "",
+    oneTime: share.downloadsLimit === 1,
+    success: true
   });
 });
 
@@ -533,8 +568,8 @@ app.get("/api/shares/:token/download", async (c) => {
   const token = c.req.param("token");
   const supabase = getSupabase(c);
   
-  const { data: share } = await supabase.from('Share').select('*, File(*)').eq('token', token).single();
-  if (!share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
+  const { data: share, error } = await supabase.from('Share').select('*, File(*)').eq('token', token).single();
+  if (error || !share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
     return c.json({ error: "invalid_link" }, 404);
   }
   if (share.downloadsCount >= share.downloadsLimit) {
@@ -547,9 +582,11 @@ app.get("/api/shares/:token/download", async (c) => {
   const arrayBuffer = await fileData.arrayBuffer();
   const decryptedBuffer = await WorkerEncryptionService.decryptBuffer(arrayBuffer, share.File.iv, share.File.authTag);
 
-  await supabase.from('Share').update({ downloadsCount: share.downloadsCount + 1 }).eq('id', share.id);
+  const newDownloadsCount = share.downloadsCount + 1;
+  await supabase.from('Share').update({ downloadsCount: newDownloadsCount }).eq('id', share.id);
 
-  if (share.downloadsLimit === 1) {
+  const isLimitReached = newDownloadsCount >= share.downloadsLimit;
+  if (isLimitReached || share.downloadsLimit === 1) {
     await supabase.storage.from('secureshare-storage').remove([share.File.r2Key]);
     await supabase.from('File').delete().eq('id', share.fileId);
   }
