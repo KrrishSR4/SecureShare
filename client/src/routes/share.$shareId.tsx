@@ -120,8 +120,8 @@ function ShareDownloadPage() {
       });
   }, [shareId]);
 
-  const getFileIcon = (fileName: string) => {
-    const ext = fileName.split(".").pop() || "";
+  const getFileIcon = (fileName?: string) => {
+    const ext = (fileName || "").split(".").pop() || "";
     switch (ext.toLowerCase()) {
       case "pdf":
         return FileText;

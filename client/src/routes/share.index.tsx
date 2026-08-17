@@ -372,7 +372,8 @@ function WorkspacePage() {
 
   const handleFilesSelected = (fileList: FileList) => {
     Array.from(fileList).forEach((file) => {
-      const ext = file.name.split(".").pop() || "bin";
+      const fileName = file?.name || "unnamed_file";
+      const ext = fileName.includes(".") ? (fileName.split(".").pop() || "bin") : "bin";
       const baseName = file.name.substring(0, file.name.lastIndexOf("."));
       const sizeKB = file.size / 1024;
       const sizeStr =
@@ -402,32 +403,18 @@ function WorkspacePage() {
 
   const simulateUploadProgress = (id: string, fileInfo: WorkspaceFile, rawFile?: File) => {
     let progress = 0;
-    // Introduce random success/fail simulation for realistic feel
-    const isDestinedToFail = Math.random() < 0.08; // 8% chance to fail for testing retry logic
-
     const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 15) + 5;
+      progress += Math.floor(Math.random() * 20) + 10;
 
       if (progress >= 100) {
         clearInterval(interval);
-        if (isDestinedToFail) {
-          setUploadingQueue((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, status: "failed", progress: 80 } : f)),
-          );
-          logActivity(
-            "Upload Failed",
-            `Failed to upload ${fileInfo.name}.${fileInfo.extension}`,
-            `${fileInfo.name}.${fileInfo.extension}`,
-            AlertCircle,
-          );
-        } else {
-          const completedFile: WorkspaceFile = {
-            ...fileInfo,
-            id: `f-${Math.random().toString(36).substring(2, 9)}`,
-            status: "completed",
-            progress: undefined,
-            uploadTime: "Just now",
-          };
+        const completedFile: WorkspaceFile = {
+          ...fileInfo,
+          id: `f-${Math.random().toString(36).substring(2, 9)}`,
+          status: "completed",
+          progress: undefined,
+          uploadTime: "Just now",
+        };
 
           if (isServerOnline && rawFile) {
             const formData = new FormData();
@@ -470,14 +457,13 @@ function WorkspacePage() {
               Upload,
             );
           }
+        } else {
+          setUploadingQueue((prev) =>
+            prev.map((f) => (f.id === id ? { ...f, progress: Math.min(progress, 99) } : f)),
+          );
         }
-      } else {
-        setUploadingQueue((prev) =>
-          prev.map((f) => (f.id === id ? { ...f, progress: Math.min(progress, 99) } : f)),
-        );
-      }
-    }, 250);
-  };
+      }, 250);
+    };
 
   const handleCancelUpload = (id: string) => {
     setUploadingQueue((prev) => prev.filter((f) => f.id !== id));
@@ -1448,9 +1434,10 @@ function WorkspacePage() {
                                   <ExternalLink className="h-4 w-4" />
                                 </a>
                                 <button
-                                  onClick={() =>
-                                    handleRevokeShare(share.url.split("/").pop() || "")
-                                  }
+                                  onClick={() => {
+                                    const token = (share?.url || "").split("/").pop() || share?.id || "";
+                                    handleRevokeShare(token);
+                                  }}
                                   className="rounded p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
                                   title="Revoke Link"
                                 >

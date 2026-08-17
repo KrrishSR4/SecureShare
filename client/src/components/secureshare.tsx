@@ -1329,9 +1329,9 @@ function RecipientsPanel() {
           >
             <div className="flex items-center gap-3">
               <div className="grid h-8 w-8 place-items-center rounded-full bg-mist font-mono text-[11px]">
-                {p.n
+                {(p.n || p.e || "User")
                   .split(" ")
-                  .map((x) => x[0])
+                  .map((x) => x?.[0] || "")
                   .join("")}
               </div>
               <div>
@@ -1721,9 +1721,9 @@ export function Testimonials() {
             </blockquote>
             <figcaption className="mt-8 flex items-center gap-4 border-t border-border pt-6">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-ink font-mono text-xs text-background">
-                {t.n
+                {(t.n || "User")
                   .split(" ")
-                  .map((x) => x[0])
+                  .map((x) => x?.[0] || "")
                   .join("")}
               </div>
               <div>
