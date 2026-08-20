@@ -570,13 +570,17 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
 
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
+  const isOneTime = Boolean(body.oneTimeDownload || body.oneTime);
+  const downloadsLimit = isOneTime ? 1 : 5;
+  const expiresAt = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+
   const { data: share, error } = await supabase.from('Share').insert({
     id: crypto.randomUUID(),
     fileId,
     token,
     recipientEmail: body.recipientEmail || null,
-    downloadsLimit: body.oneTimeDownload ? 1 : 5,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    downloadsLimit,
+    expiresAt,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     revoked: false,
@@ -602,7 +606,7 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
     recipient: body.recipientEmail || "Public Access Link",
     action: "FILE_SHARED",
     encryption: dbFile.iv ? "AES-256" : "None",
-    downloadType: body.oneTimeDownload ? "ONE_TIME" : "NORMAL",
+    downloadType: isOneTime ? "ONE_TIME" : "NORMAL",
     status: "SUCCESS"
   });
 

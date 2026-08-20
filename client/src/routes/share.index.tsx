@@ -711,6 +711,7 @@ function WorkspacePage() {
           recipientEmail: shareEmail || "Public Access Link",
           password: requirePassword ? password : "",
           oneTime: oneTimeDownload,
+          oneTimeDownload: oneTimeDownload,
         }),
       })
         .then((res) => {
