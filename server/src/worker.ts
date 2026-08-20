@@ -58,7 +58,7 @@ app.get("/api/auth/google", (c) => {
 // 2. Google OAuth Callback
 app.get("/api/auth/google/callback", async (c) => {
   const code = c.req.query("code");
-  const FRONTEND_URL = c.env.FRONTEND_URL || "https://secureshare-frontend-dev.pages.dev";
+  const FRONTEND_URL = c.env.FRONTEND_URL || "https://filesecureshare.pages.dev";
   if (!code) return c.redirect(`${FRONTEND_URL}/auth/signin?error=OAuthCodeMissing`, 302);
 
   const WORKER_URL = new URL(c.req.url).origin;
@@ -128,7 +128,7 @@ app.get("/api/auth/github", (c) => {
 // 4. GitHub OAuth Callback
 app.get("/api/auth/github/callback", async (c) => {
   const code = c.req.query("code");
-  const FRONTEND_URL = c.env.FRONTEND_URL || "https://secureshare-frontend-dev.pages.dev";
+  const FRONTEND_URL = c.env.FRONTEND_URL || "https://filesecureshare.pages.dev";
   if (!code) return c.redirect(`${FRONTEND_URL}/auth/signin?error=OAuthCodeMissing`, 302);
 
   try {
@@ -260,7 +260,7 @@ app.get("/api/files", authMiddleware, async (c) => {
 
   if (!files) return c.json([]);
 
-  const FRONTEND_URL = c.env.FRONTEND_URL || "https://secureshare-frontend-dev.pages.dev";
+  const FRONTEND_URL = c.env.FRONTEND_URL || "https://filesecureshare.pages.dev";
 
   const mappedFiles = files.map((f: any) => ({
     id: f.id,
@@ -606,7 +606,7 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
     status: "SUCCESS"
   });
 
-  const FRONTEND_URL = c.env.FRONTEND_URL || "https://secureshare-frontend-dev.pages.dev";
+  const FRONTEND_URL = c.env.FRONTEND_URL || "https://filesecureshare.pages.dev";
   const shareUrl = `${FRONTEND_URL}/share/${token}`;
 
   await logActivity(supabase, "Generated Share Link", `Shared ${dbFile.name}`, user?.id);

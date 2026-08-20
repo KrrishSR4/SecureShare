@@ -29,10 +29,18 @@ resource "cloudflare_pages_project" "frontend" {
 # 2. Cloudflare Worker for SecureShare Backend
 resource "cloudflare_workers_script" "backend" {
   account_id = var.cloudflare_account_id
-  name       = "${var.project_name}-backend"
+  name       = "secureshare-backend"
   content    = "export default { async fetch(request, env) { return new Response('SecureShare Cloudflare Worker running'); } };"
   module     = true
 
   compatibility_date  = "2024-01-01"
   compatibility_flags = ["nodejs_compat"]
+
+  lifecycle {
+    ignore_changes = [
+      content,
+      compatibility_flags,
+      compatibility_date
+    ]
+  }
 }
