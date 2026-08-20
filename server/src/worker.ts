@@ -606,9 +606,16 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
     status: "SUCCESS"
   });
 
+  const FRONTEND_URL = c.env.FRONTEND_URL || "https://secureshare-frontend-dev.pages.dev";
+  const shareUrl = `${FRONTEND_URL}/share/${token}`;
+
   await logActivity(supabase, "Generated Share Link", `Shared ${dbFile.name}`, user?.id);
 
-  return c.json(share);
+  return c.json({
+    ...share,
+    url: shareUrl,
+    shareId: token
+  });
 });
 
 app.post("/api/shares/:token/revoke", authMiddleware, async (c) => {
