@@ -666,27 +666,95 @@ app.post("/api/shares/:shareId/revoke", requireAuth, async (req: AuthRequest, re
 });
 
 // Get activities
-app.get("/api/activities", requireAuth, async (req: AuthRequest, res: Response) => {
+app.get("/api/activities", requireAuth, async (req: AuthRequest, res: Response): Promise<any> => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user?.userId } });
-    const email = req.user?.role === "ADMIN" ? undefined : user?.email;
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const email = req.user?.role === "ADMIN" ? undefined : user.email;
+    const userId = req.user?.role === "ADMIN" ? undefined : user.id;
 
-    const dbLogs = await prisma.supabaseAuditLog.findMany({
+    // Fetch from SupabaseAuditLog (sharing audit logs)
+    const dbSupabaseLogs = await prisma.supabaseAuditLog.findMany({
       where: email ? { sharedBy: email } : {},
       orderBy: { timestamp: "desc" },
-      take: 20
+      take: 50
     });
 
-    const mappedActivities = dbLogs.map((log: any) => ({
-      id: log.id,
-      time: log.timestamp.toISOString(),
-      action: log.action,
-      details: `${log.action}: ${log.fileName || "File"} shared with ${log.recipient || "Public"}`,
-      fileName: log.fileName || "",
-      iconName: "FileText"
-    }));
+    // Fetch from AuditLog (system & general activities)
+    const dbAuditLogs = await prisma.auditLog.findMany({
+      where: userId ? { userId } : {},
+      orderBy: { createdAt: "desc" },
+      take: 50
+    });
 
-    res.json(mappedActivities);
+    // Map SupabaseAuditLog (sharing / downloads) to activity format
+    const mappedSupabaseLogs = dbSupabaseLogs.map((log: any) => {
+      let details = "";
+      let iconName = "Share2";
+      if (log.action === "FILE_DOWNLOADED") {
+        details = `Downloaded by ${log.recipient || "Public Access Link"}`;
+        iconName = "Download";
+      } else if (log.action === "FILE_SHARED") {
+        details = `Shared with ${log.recipient || "Public Access Link"}`;
+        iconName = "Share2";
+      } else if (log.action === "LINK_REVOKED") {
+        details = `Revoked share link for ${log.fileName || "File"}`;
+        iconName = "Trash2";
+      } else if (log.action === "LINK_EXPIRED") {
+        details = `Share link for ${log.fileName || "File"} expired`;
+        iconName = "Trash2";
+      } else {
+        details = `${log.action}: ${log.fileName || "File"} shared with ${log.recipient || "Public"}`;
+        iconName = "FileText";
+      }
+
+      return {
+        id: log.id,
+        time: log.timestamp.toISOString(),
+        timestamp: log.timestamp,
+        action: log.action,
+        details,
+        fileName: log.fileName || "",
+        iconName
+      };
+    });
+
+    // Map AuditLog (file uploads, deletions, etc.) to activity format
+    const mappedAuditLogs = dbAuditLogs.map((log: any) => {
+      let iconName = "FileText";
+      if (log.action.includes("Upload")) {
+        iconName = "Upload";
+      } else if (log.action.includes("Share")) {
+        iconName = "Share2";
+      } else if (log.action.includes("Delete")) {
+        iconName = "Trash2";
+      } else if (log.action.includes("Shred")) {
+        iconName = "Trash2";
+      } else if (log.action.includes("Rename")) {
+        iconName = "Edit2";
+      } else if (log.action.includes("Restore")) {
+        iconName = "RotateCcw";
+      }
+
+      return {
+        id: log.id,
+        time: log.createdAt.toISOString(),
+        timestamp: log.createdAt,
+        action: log.action,
+        details: log.details,
+        fileName: "",
+        iconName
+      };
+    });
+
+    // Merge and sort by timestamp descending, limit to 40
+    const allActivities = [...mappedSupabaseLogs, ...mappedAuditLogs]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 40);
+
+    res.json(allActivities);
   } catch (err) {
     console.error("Failed to get activities:", err);
     res.status(500).json({ error: "Failed to fetch activities." });
@@ -840,12 +908,28 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
     const errorMsg = err.message || "invalid_link";
     const status = errorMsg === "owner_inactive" ? 403 : errorMsg === "invalid_link" || errorMsg === "file_removed" ? 404 : 410;
 
+    // Try to get share info to populate sharedBy in the error log
+    let ownerEmail = "Unknown";
+    let fileName = "Unknown";
+    let recipientEmail = "Unknown";
+    try {
+      const shareInfo = await prisma.share.findUnique({
+        where: { token: shareId },
+        include: { file: { include: { owner: true } } }
+      });
+      if (shareInfo && shareInfo.file) {
+        ownerEmail = shareInfo.file.owner.email;
+        fileName = shareInfo.file.name;
+        recipientEmail = shareInfo.recipientEmail || "Public Access Link";
+      }
+    } catch (_) {}
+
     // Record DOWNLOAD_FAILED or LINK_EXPIRED audit event in Supabase
     await createAuditLog({
       shareId,
-      fileName: "Unknown",
-      sharedBy: "Unknown",
-      recipient: "Unknown",
+      fileName,
+      sharedBy: ownerEmail,
+      recipient: recipientEmail,
       action: errorMsg === "link_expired" ? "LINK_EXPIRED" : "DOWNLOAD_FAILED",
       encryption: "AES-256",
       status: "FAILED"
@@ -871,11 +955,29 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
 
   const dbFile = dbShare.file;
   if (!dbFile.iv || !dbFile.authTag) {
+    await createAuditLog({
+      shareId: dbShare.token,
+      fileName: dbFile.name,
+      sharedBy: dbFile.owner.email,
+      recipient: dbShare.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
     return res.status(404).json({ error: "File encryption metadata missing" });
   }
 
   const filePath = path.join(process.cwd(), "uploads", dbFile.r2Key);
   if (!fs.existsSync(filePath)) {
+    await createAuditLog({
+      shareId: dbShare.token,
+      fileName: dbFile.name,
+      sharedBy: dbFile.owner.email,
+      recipient: dbShare.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
     return res.status(404).json({ error: "File missing on disk" });
   }
 
@@ -931,6 +1033,15 @@ app.get("/api/shares/:shareId/download", async (req: Request, res: Response): Pr
     }
   } catch (err) {
     console.error("Secure download error:", err);
+    await createAuditLog({
+      shareId: dbShare.token,
+      fileName: dbFile.name,
+      sharedBy: dbFile.owner.email,
+      recipient: dbShare.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to decrypt file. Integrity check might have failed." });
     }

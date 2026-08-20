@@ -112,6 +112,8 @@ const getIconComponent = (iconName?: string) => {
       return Trash2;
     case "RotateCcw":
       return RotateCcw;
+    case "Download":
+      return Download;
     default:
       return FileText;
   }

@@ -212,6 +212,34 @@ async function logActivity(supabase: any, action: string, details: string, userI
   });
 }
 
+async function createWorkerAuditLog(supabase: any, payload: {
+  shareId?: string | null;
+  fileName?: string | null;
+  sharedBy?: string | null;
+  recipient?: string | null;
+  action: string;
+  encryption?: string | null;
+  downloadType?: string | null;
+  status: string;
+}) {
+  try {
+    await supabase.from('audit_logs').insert({
+      id: crypto.randomUUID(),
+      share_id: payload.shareId || null,
+      file_name: payload.fileName || null,
+      shared_by: payload.sharedBy || null,
+      recipient: payload.recipient || null,
+      action: payload.action,
+      encryption: payload.encryption || null,
+      download_type: payload.downloadType || null,
+      status: payload.status,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Failed to write Worker audit log:", err);
+  }
+}
+
 async function getAuthUser(c: any) {
   const email = c.get("userEmail");
   const { data: user } = await getSupabase(c).from('User').select('id').eq('email', email).single();
@@ -438,27 +466,86 @@ app.delete("/api/trash/:fileId/permanent", authMiddleware, async (c) => {
 app.get("/api/activities", authMiddleware, async (c) => {
   const supabase = getSupabase(c);
   const user = await getAuthUser(c);
+  const email = (c as any).get("userEmail") as string;
   if (!user) return c.json([]);
 
-  const { data: logs } = await supabase
+  const { data: auditLogs } = await supabase
     .from('AuditLog')
     .select('*')
     .eq('userId', user.id)
     .order('createdAt', { ascending: false })
     .limit(50);
 
-  if (!logs) return c.json([]);
+  const { data: supabaseLogs } = await supabase
+    .from('audit_logs')
+    .select('*')
+    .eq('shared_by', email)
+    .order('timestamp', { ascending: false })
+    .limit(50);
 
-  const mappedLogs = logs.map((l: any) => ({
-    id: l.id,
-    action: l.action,
-    details: l.details,
-    timestamp: l.createdAt,
-    target: "System",
-    iconName: "Activity"
-  }));
+  const mappedAuditLogs = (auditLogs || []).map((log: any) => {
+    let iconName = "FileText";
+    if (log.action.includes("Upload")) {
+      iconName = "Upload";
+    } else if (log.action.includes("Share")) {
+      iconName = "Share2";
+    } else if (log.action.includes("Delete")) {
+      iconName = "Trash2";
+    } else if (log.action.includes("Shred")) {
+      iconName = "Trash2";
+    } else if (log.action.includes("Rename")) {
+      iconName = "Edit2";
+    } else if (log.action.includes("Restore")) {
+      iconName = "RotateCcw";
+    }
 
-  return c.json(mappedLogs);
+    return {
+      id: log.id,
+      time: log.createdAt,
+      timestamp: log.createdAt,
+      action: log.action,
+      details: log.details,
+      fileName: "",
+      iconName
+    };
+  });
+
+  const mappedSupabaseLogs = (supabaseLogs || []).map((log: any) => {
+    let details = "";
+    let iconName = "Share2";
+    if (log.action === "FILE_DOWNLOADED") {
+      details = `Downloaded by ${log.recipient || "Public Access Link"}`;
+      iconName = "Download";
+    } else if (log.action === "FILE_SHARED") {
+      details = `Shared with ${log.recipient || "Public Access Link"}`;
+      iconName = "Share2";
+    } else if (log.action === "LINK_REVOKED") {
+      details = `Revoked share link for ${log.file_name || "File"}`;
+      iconName = "Trash2";
+    } else if (log.action === "LINK_EXPIRED") {
+      details = `Share link for ${log.file_name || "File"} expired`;
+      iconName = "Trash2";
+    } else {
+      details = `${log.action}: ${log.file_name || "File"} shared with ${log.recipient || "Public"}`;
+      iconName = "FileText";
+    }
+
+    return {
+      id: log.id,
+      time: log.timestamp,
+      timestamp: log.timestamp,
+      action: log.action,
+      details,
+      fileName: log.file_name || "",
+      iconName
+    };
+  });
+
+  const allActivities = [...mappedAuditLogs, ...mappedSupabaseLogs]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 40);
+
+  return c.json(allActivities);
 });
 
 app.post("/api/activities", authMiddleware, async (c) => {
@@ -476,6 +563,7 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
   const body = await c.req.json();
   const supabase = getSupabase(c);
   const user = await getAuthUser(c);
+  const email = (c as any).get("userEmail") as string;
 
   const { data: dbFile } = await supabase.from('File').select('*').eq('id', fileId).eq('ownerId', user?.id).single();
   if (!dbFile) return c.json({ error: "File not found" }, 404);
@@ -495,7 +583,29 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
     downloadsCount: 0
   }).select().single();
 
-  if (error) return c.json({ error: "Share creation failed" }, 500);
+  if (error) {
+    await createWorkerAuditLog(supabase, {
+      fileName: dbFile.name,
+      sharedBy: email || "Unknown",
+      recipient: body.recipientEmail || "Unknown",
+      action: "SHARE_FAILED",
+      status: "FAILED"
+    });
+    return c.json({ error: "Share creation failed" }, 500);
+  }
+
+  const ownerEmail = email || "Unknown";
+  await createWorkerAuditLog(supabase, {
+    shareId: token,
+    fileName: dbFile.name,
+    sharedBy: ownerEmail,
+    recipient: body.recipientEmail || "Public Access Link",
+    action: "FILE_SHARED",
+    encryption: dbFile.iv ? "AES-256" : "None",
+    downloadType: body.oneTimeDownload ? "ONE_TIME" : "NORMAL",
+    status: "SUCCESS"
+  });
+
   await logActivity(supabase, "Generated Share Link", `Shared ${dbFile.name}`, user?.id);
 
   return c.json(share);
@@ -504,7 +614,40 @@ app.post("/api/files/:fileId/shares", authMiddleware, async (c) => {
 app.post("/api/shares/:token/revoke", authMiddleware, async (c) => {
   const token = c.req.param("token");
   const supabase = getSupabase(c);
+  const user = await getAuthUser(c);
+  const email = (c as any).get("userEmail") as string;
+  
+  const { data: share } = await supabase.from('Share').select('*, File(*, User(*))').eq('token', token).single();
+  
   await supabase.from('Share').update({ revoked: true }).eq('token', token);
+  
+  if (share && share.File) {
+    const ownerEmail = share.File.User?.email || email || "Unknown";
+    
+    await supabase.storage.from('secureshare-storage').remove([share.File.r2Key]);
+    await supabase.from('File').delete().eq('id', share.fileId);
+
+    await createWorkerAuditLog(supabase, {
+      shareId: token,
+      fileName: share.File.name,
+      sharedBy: ownerEmail,
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "LINK_REVOKED",
+      encryption: share.File.iv ? "AES-256" : "None",
+      status: "SUCCESS"
+    });
+
+    await createWorkerAuditLog(supabase, {
+      shareId: token,
+      fileName: share.File.name,
+      sharedBy: ownerEmail,
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "FILE_DELETED",
+      encryption: share.File.iv ? "AES-256" : "None",
+      status: "SUCCESS"
+    });
+  }
+  
   return c.json({ success: true });
 });
 
@@ -568,35 +711,109 @@ app.get("/api/shares/:token/download", async (c) => {
   const token = c.req.param("token");
   const supabase = getSupabase(c);
   
-  const { data: share, error } = await supabase.from('Share').select('*, File(*)').eq('token', token).single();
+  const { data: share, error } = await supabase.from('Share').select('*, File(*, User(*))').eq('token', token).single();
   if (error || !share || share.revoked || (share.expiresAt && new Date(share.expiresAt) < new Date())) {
+    let ownerEmail = "Unknown";
+    let fileName = "Unknown";
+    let recipientEmail = "Unknown";
+    if (share && share.File) {
+      fileName = share.File.name;
+      recipientEmail = share.recipientEmail || "Public Access Link";
+      if (share.File.User) {
+        ownerEmail = share.File.User.email;
+      }
+    }
+    await createWorkerAuditLog(supabase, {
+      shareId: token,
+      fileName,
+      sharedBy: ownerEmail,
+      recipient: recipientEmail,
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
     return c.json({ error: "invalid_link" }, 404);
   }
   if (share.downloadsCount >= share.downloadsLimit) {
+    await createWorkerAuditLog(supabase, {
+      shareId: token,
+      fileName: share.File.name,
+      sharedBy: share.File.User?.email || "Unknown",
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
     return c.json({ error: "invalid_link" }, 404);
   }
 
   const { data: fileData, error: downloadError } = await supabase.storage.from('secureshare-storage').download(share.File.r2Key);
-  if (downloadError || !fileData) return c.json({ error: "Storage error" }, 500);
-
-  const arrayBuffer = await fileData.arrayBuffer();
-  const decryptedBuffer = await WorkerEncryptionService.decryptBuffer(arrayBuffer, share.File.iv, share.File.authTag);
-
-  const newDownloadsCount = share.downloadsCount + 1;
-  await supabase.from('Share').update({ downloadsCount: newDownloadsCount }).eq('id', share.id);
-
-  const isLimitReached = newDownloadsCount >= share.downloadsLimit;
-  if (isLimitReached || share.downloadsLimit === 1) {
-    await supabase.storage.from('secureshare-storage').remove([share.File.r2Key]);
-    await supabase.from('File').delete().eq('id', share.fileId);
+  if (downloadError || !fileData) {
+    await createWorkerAuditLog(supabase, {
+      shareId: token,
+      fileName: share.File.name,
+      sharedBy: share.File.User?.email || "Unknown",
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
+    return c.json({ error: "Storage error" }, 500);
   }
 
-  return new Response(decryptedBuffer, {
-    headers: {
-      "Content-Type": share.File.mimeType,
-      "Content-Disposition": `attachment; filename="${share.File.name}"`
+  try {
+    const arrayBuffer = await fileData.arrayBuffer();
+    const decryptedBuffer = await WorkerEncryptionService.decryptBuffer(arrayBuffer, share.File.iv, share.File.authTag);
+
+    const newDownloadsCount = share.downloadsCount + 1;
+    await supabase.from('Share').update({ downloadsCount: newDownloadsCount }).eq('id', share.id);
+
+    await createWorkerAuditLog(supabase, {
+      shareId: share.token,
+      fileName: share.File.name,
+      sharedBy: share.File.User?.email || "Unknown",
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "FILE_DOWNLOADED",
+      encryption: "AES-256",
+      downloadType: share.downloadsLimit === 1 ? "ONE_TIME" : "NORMAL",
+      status: "SUCCESS"
+    });
+
+    const isLimitReached = newDownloadsCount >= share.downloadsLimit;
+    if (isLimitReached || share.downloadsLimit === 1) {
+      await supabase.storage.from('secureshare-storage').remove([share.File.r2Key]);
+      await supabase.from('File').delete().eq('id', share.fileId);
+
+      await createWorkerAuditLog(supabase, {
+        shareId: share.token,
+        fileName: share.File.name,
+        sharedBy: share.File.User?.email || "Unknown",
+        recipient: share.recipientEmail || "Public Access Link",
+        action: "FILE_DELETED",
+        encryption: "AES-256",
+        status: "SUCCESS"
+      });
     }
-  });
+
+    return new Response(decryptedBuffer, {
+      headers: {
+        "Content-Type": share.File.mimeType,
+        "Content-Disposition": `attachment; filename="${share.File.name}"`
+      }
+    });
+  } catch (err) {
+    console.error("Worker download error:", err);
+    await createWorkerAuditLog(supabase, {
+      shareId: share.token,
+      fileName: share.File.name,
+      sharedBy: share.File.User?.email || "Unknown",
+      recipient: share.recipientEmail || "Public Access Link",
+      action: "DOWNLOAD_FAILED",
+      encryption: "AES-256",
+      status: "FAILED"
+    });
+    return c.json({ error: "Download failed" }, 500);
+  }
 });
 
 export default app;
