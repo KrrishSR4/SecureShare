@@ -773,7 +773,12 @@ app.get("/api/shares/:token/download", async (c) => {
     const decryptedBuffer = await WorkerEncryptionService.decryptBuffer(arrayBuffer, share.File.iv, share.File.authTag);
 
     const newDownloadsCount = share.downloadsCount + 1;
-    await supabase.from('Share').update({ downloadsCount: newDownloadsCount }).eq('id', share.id);
+    const isLimitReached = newDownloadsCount >= share.downloadsLimit;
+
+    await supabase.from('Share').update({
+      downloadsCount: newDownloadsCount,
+      revoked: isLimitReached || share.downloadsLimit === 1
+    }).eq('id', share.id);
 
     await createWorkerAuditLog(supabase, {
       shareId: share.token,
@@ -786,10 +791,9 @@ app.get("/api/shares/:token/download", async (c) => {
       status: "SUCCESS"
     });
 
-    const isLimitReached = newDownloadsCount >= share.downloadsLimit;
     if (isLimitReached || share.downloadsLimit === 1) {
       await supabase.storage.from('secureshare-storage').remove([share.File.r2Key]);
-      await supabase.from('File').delete().eq('id', share.fileId);
+      await supabase.from('File').update({ inTrash: true }).eq('id', share.fileId);
 
       await createWorkerAuditLog(supabase, {
         shareId: share.token,
@@ -800,6 +804,10 @@ app.get("/api/shares/:token/download", async (c) => {
         encryption: "AES-256",
         status: "SUCCESS"
       });
+
+      if (share.File.ownerId) {
+        await logActivity(supabase, "Moved to Trash", `File ${share.File.name} automatically moved to trash bin after download`, share.File.ownerId);
+      }
     }
 
     return new Response(decryptedBuffer, {
