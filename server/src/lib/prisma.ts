@@ -1,11 +1,3 @@
-import { PrismaClient } from "@prisma/client";
-
-declare global {
-  var prisma: PrismaClient | undefined;
-}
-
-const prisma = global.prisma || new PrismaClient();
-
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
-
-export default prisma;
+// Re-export the configured Turso Prisma client from the central config
+// This ensures all parts of the app use the same LibSQL-adapted client
+export { default } from "../config/postgres.js";

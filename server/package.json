@@ -15,8 +15,9 @@
     "test:integration": "node --import tsx --test src/index.integration.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "@prisma/adapter-libsql": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "@supabase/supabase-js": "^2.116.0",
     "bcryptjs": "^3.0.3",
     "busboy": "^1.6.0",
     "cookie-parser": "^1.4.7",
