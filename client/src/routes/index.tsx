@@ -116,6 +116,9 @@ function Landing() {
   const heroOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.3]);
 
   useEffect(() => {
+    // Always start at top — prevents scrollRestoration from causing double-scroll
+    window.scrollTo(0, 0);
+
     // Staggered Page-Load Hero Timeline
     const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
 
@@ -154,6 +157,11 @@ function Landing() {
         { opacity: 1, scale: 1, rotateX: 0, duration: 1.2, ease: "power3.out" },
         "-=0.6",
       );
+
+    // Cleanup: kill timeline on unmount (fixes React StrictMode double-invocation)
+    return () => {
+      tl.kill();
+    };
   }, []);
 
   return (
